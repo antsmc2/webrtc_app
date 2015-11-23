@@ -36,7 +36,7 @@ Receiver page is accessed on the link:
 ##Testing
 Unit tests are all in tests folder
 
-To run unit tests using below commands:
+Run the unittest from project folder using below commands:
 
 >python -m tornado.testing discover tests/
 
