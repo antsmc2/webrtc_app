@@ -1,0 +1,4 @@
+tornado==4.3
+websocket-client==0.34.0
+pytest
+pytest-tornado==0.4.4
