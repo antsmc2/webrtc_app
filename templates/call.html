@@ -73,9 +73,7 @@
         		results = regex.exec(location.search);
     			return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 			}
-            var channel = location.href.replace(/\/|:|#|%|\.|\[|\]/g, '');
-            var ipport = location.href.split('/')[2];
-            query_string = location.href.split('?')[1]
+
             var websocket = new WebSocket('{% raw caller_ws_uri %}');
             websocket.onerror = function() {
                 //location.reload();
