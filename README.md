@@ -30,7 +30,7 @@ Caller page is accessed on the link:
 
 Receiver page is accessed on the link:
 
- http://127.0.0.1:PORT/call?id={caller_id}&peer_id={reciever_id}
+ http://127.0.0.1:PORT/recieve?id={reciever_id}&peer_id={caller_id}
 
 
 ##Testing
