@@ -54,6 +54,43 @@ class TestCallerApp(BasicTestCase):
             yield self.http_client.fetch(caller_page_uri)
         self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
 
+
+    @testing.gen_test
+    def test_if_first_caller_starts_call_to_peer_subsequent_caller_gets_page_peer_busy(self):
+        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
+                                                id=TEST_PEER_ID1)
+        caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+        yield client_socket.read_message() #call init msg
+        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
+        with self.assertRaises(httpclient.HTTPError) as context:
+            yield self.http_client.fetch(caller_page_uri)
+        self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
+
+    @testing.gen_test
+    def test_first_caller_drops_then_subsequent_caller_can_reach_same_reciepient(self):
+        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
+                                                id=TEST_PEER_ID1)
+        caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+        yield client_socket.read_message()  #call int msg
+        reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+                                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
+        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
+        with self.assertRaises(httpclient.HTTPError) as context:
+            yield self.http_client.fetch(caller_page_uri)
+        self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
+        caller_socket.close()
+        msg = yield client_socket.read_message() #call dropped msg
+        self.assertEqual(msg, webrtc_server.get_notice_msg(MY_CALLER_ID,
+                                                webrtc_server.CALL_TYPE, webrtc_server.CALL_DROPPED))
+        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
+        response = yield self.http_client.fetch(caller_page_uri)
+        self.assertEqual(response.code, 200)
+
     @testing.gen_test
     def test_caller_websocket_triggers_correct_client_websocket_with_reciepient_peer_details(self):
         client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)

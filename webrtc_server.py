@@ -54,9 +54,11 @@ class CallTemplateHandler(web.RequestHandler):
         peer_id = self.get_query_argument('peer_id', None)
         id = self.get_query_argument('id', None)
         if clients.has_key(peer_id) is False:
+            logger.error('peer unavailable: %s' % peer_id)
             self.set_status(404, reason=PEER_UNAVAILABLE)
             return self.write(PEER_UNAVAILABLE)
-        if peers.has_key(peer_id) and peers.has_key(peers[peer_id].peer_id):
+        logger.debug('client call status %s: %s' % (peer_id, clients[peer_id].call_status))
+        if clients[peer_id].call_status == LoginHandler.BUSY:
             self.set_status(423, reason=PEER_BUSY)
             return self.write(PEER_BUSY)
         caller_ws_uri = make_url(self.request.host, app.reverse_url('caller_ws'), id=id, peer_id=peer_id)
@@ -85,7 +87,6 @@ class BaseHandler(websocket.WebSocketHandler):
     def clean(self):
         pass
 
-
 class WebRTCHandler(BaseHandler):
     peer_id = None
     
@@ -98,7 +99,6 @@ class WebRTCHandler(BaseHandler):
         self.peer_id = self.get_query_argument('peer_id', None)
         logger.info('new id: %s, peer: %s' % (self.id, self.peer_id))
         if self.id and self.id is not self.peer_id:
-            logger.debug('logged in probs')
             if peers.has_key(self.id) is False:
                 peers[self.id] = self
             else:
@@ -138,12 +138,24 @@ class RecieveHandler(WebRTCHandler):
     pass
 
 class LoginHandler(BaseHandler):
-    
+    BUSY = 0
+    AVAILABLE = 1
+    call_status = AVAILABLE
+
     def open(self):
         self.id = self.get_query_argument('id', None)
         logger.info('login request for: %s' % self.id)
         if self.id and clients.has_key(id) is False:
             clients[self.id] = self
+            self.call_status = LoginHandler.AVAILABLE
+
+    def write_message(self, message, binary=False):
+        msg = json.loads(message)
+        if msg.has_key('msg_type') and msg['msg_type'] == CALL_TYPE and msg['status'] == CALL_INIT:
+            self.call_status = LoginHandler.BUSY
+        if msg.has_key('msg_type') and msg['msg_type'] == CALL_TYPE and msg['status'] == CALL_DROPPED:
+            self.call_status = LoginHandler.AVAILABLE
+        return super(LoginHandler, self).write_message(message, binary)
 
     def on_close(self):
         if clients.has_key(self.id):
