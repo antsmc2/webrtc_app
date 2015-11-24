@@ -25,7 +25,6 @@ class TestCallerApp(BasicTestCase):
             code = ex.code
         self.assertEqual(code, 200)
 
-
     @testing.gen_test
     def test_caller_page_uses_CallHandler_for_signaling(self):
         client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
@@ -38,6 +37,26 @@ class TestCallerApp(BasicTestCase):
                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
             self.assertIn(caller_ws_uri, response.body)
             code = response.code
+        except httpclient.HTTPError, ex:
+            self.assertTrue(False)
+
+    @testing.gen_test
+    def test_get_or_post_to_call_page_url_gives_same_caller_page(self):
+        import urllib
+        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
+                                                id=TEST_PEER_ID1)
+        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+                                        protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+        caller_page_uri_no_query_string = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+                                        protocol='http')
+        data = { 'id': MY_CALLER_ID, 'peer_id': TEST_PEER_ID1 } #A dictionary of your post data
+        request_body = urllib.urlencode(data)
+        self.assertEqual(caller_page_uri, '%s?%s'%(caller_page_uri_no_query_string, request_body))
+        try:
+            response1 = yield self.http_client.fetch(caller_page_uri, method='GET')
+            response2 = yield self.http_client.fetch(caller_page_uri_no_query_string,
+                                                     method='POST', body=request_body)
+            self.assertEqual(response1.body, response2.body)
         except httpclient.HTTPError, ex:
             self.assertTrue(False)
 

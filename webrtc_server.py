@@ -50,9 +50,10 @@ def make_url(host, path, protocol='ws', **kwargs):
     return '%s?%s' % (base_url, query_string)
 
 class CallTemplateHandler(web.RequestHandler):
-    def get(self):
-        peer_id = self.get_query_argument('peer_id', None)
-        id = self.get_query_argument('id', None)
+
+    def process_request(self, *args, **kwargs):
+        peer_id = self.get_query_argument('peer_id', None) or self.get_argument('peer_id', None)
+        id = self.get_query_argument('id', None) or self.get_argument('id', None)
         if clients.has_key(peer_id) is False:
             logger.error('peer unavailable: %s' % peer_id)
             self.set_status(404, reason=PEER_UNAVAILABLE)
@@ -65,13 +66,25 @@ class CallTemplateHandler(web.RequestHandler):
         self.render(os.path.join(TEMPLATE_DIR, "base.html"),
                     caller_ws_uri=caller_ws_uri, my_id=id, peer_id=peer_id, title='Caller')
 
+    def get(self, *args, **kwargs):
+        self.process_request(*args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        self.process_request(*args, **kwargs)
+
 class RecieveTemplateHandler(web.RequestHandler):
-    def get(self):
-        peer_id = self.get_query_argument('peer_id', None)
-        id = self.get_query_argument('id', None)
+    def process_request(self, *args, **kwargs):
+        peer_id = self.get_query_argument('peer_id', None) or self.get_argument('peer_id', None)
+        id = self.get_query_argument('id', None) or self.get_argument('id', None)
         recieve_ws_uri = make_url(self.request.host, app.reverse_url('reciever_ws'), id=id, peer_id=peer_id)
         self.render(os.path.join(TEMPLATE_DIR, "base.html"), recieve_ws_uri=recieve_ws_uri,
                     my_id=id, peer_id=peer_id, title='Receiver')
+
+    def get(self, *args, **kwargs):
+        self.process_request(*args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        self.process_request(*args, **kwargs)
 
 class BaseHandler(websocket.WebSocketHandler):
     id = None

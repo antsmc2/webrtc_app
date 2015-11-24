@@ -44,6 +44,26 @@ class TestRecieverApp(BasicTestCase):
         self.assertEqual(val2, test_msg2)
 
     @testing.gen_test
+    def test_get_or_post_to_recieve_page_url_gives_same_reciever_page(self):
+        import urllib
+        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
+                                                id=TEST_PEER_ID1)
+        reciever_page_uri = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
+                                        protocol='http', id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
+        reciever_page_uri_no_query_string = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
+                                        protocol='http')
+        data = { 'peer_id': MY_CALLER_ID, 'id': TEST_PEER_ID1 } #A dictionary of your post data
+        request_body = urllib.urlencode(data)
+        self.assertEqual(reciever_page_uri, '%s?%s'%(reciever_page_uri_no_query_string, request_body))
+        try:
+            response1 = yield self.http_client.fetch(reciever_page_uri, method='GET')
+            response2 = yield self.http_client.fetch(reciever_page_uri_no_query_string,
+                                                     method='POST', body=request_body)
+            self.assertEqual(response1.body, response2.body)
+        except httpclient.HTTPError, ex:
+            self.assertTrue(False)
+
+    @testing.gen_test
     def test_recepient_removed_from_inmemory_when_peer_disconnects(self):
         client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
