@@ -62,16 +62,16 @@ class CallTemplateHandler(web.RequestHandler):
             self.set_status(423, reason=PEER_BUSY)
             return self.write(PEER_BUSY)
         caller_ws_uri = make_url(self.request.host, app.reverse_url('caller_ws'), id=id, peer_id=peer_id)
-        self.render(os.path.join(TEMPLATE_DIR, "call.html"),
-                    caller_ws_uri=caller_ws_uri, caller_id=id, peer_id=peer_id)
+        self.render(os.path.join(TEMPLATE_DIR, "base.html"),
+                    caller_ws_uri=caller_ws_uri, my_id=id, peer_id=peer_id, title='Caller')
 
 class RecieveTemplateHandler(web.RequestHandler):
     def get(self):
         peer_id = self.get_query_argument('peer_id', None)
         id = self.get_query_argument('id', None)
         recieve_ws_uri = make_url(self.request.host, app.reverse_url('reciever_ws'), id=id, peer_id=peer_id)
-        self.render(os.path.join(TEMPLATE_DIR, "recieve.html"), recieve_ws_uri=recieve_ws_uri,
-                    my_id=id, caller_id=peer_id)
+        self.render(os.path.join(TEMPLATE_DIR, "base.html"), recieve_ws_uri=recieve_ws_uri,
+                    my_id=id, peer_id=peer_id, title='Receiver')
 
 class BaseHandler(websocket.WebSocketHandler):
     id = None
