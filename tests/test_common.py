@@ -45,3 +45,5 @@ class BasicTestCase(testing.AsyncHTTPTestCase):
         return webrtc_server.app
 
 
+if __name__ == "__main__":
+    testing.unittest.main(verbosity=1)

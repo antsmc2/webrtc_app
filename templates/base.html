@@ -74,7 +74,7 @@
         peer.onStreamAdded = function(e) {
             var video = e.mediaElement;
             if(!(video.getAttribute('mozSrcObject') || video.getAttribute('src')))
-                video.style.display = "none";
+                return;//video.style.display = "none";
             video.setAttribute('controls', true);
             if(e.parent_container)
             {

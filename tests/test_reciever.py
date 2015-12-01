@@ -52,7 +52,7 @@ class TestRecieverApp(BasicTestCase):
                                         protocol='http', id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
         reciever_page_uri_no_query_string = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
                                         protocol='http')
-        data = { 'peer_id': MY_CALLER_ID, 'id': TEST_PEER_ID1 } #A dictionary of your post data
+        data = { 'id': TEST_PEER_ID1, 'peer_id': MY_CALLER_ID } #A dictionary of your post data
         request_body = urllib.urlencode(data)
         self.assertEqual(reciever_page_uri, '%s?%s'%(reciever_page_uri_no_query_string, request_body))
         try:
@@ -124,3 +124,5 @@ class TestRecieverApp(BasicTestCase):
         self.assertTrue(TEST_PEER_ID1 not in webrtc_server.clients.keys())
         self.assertTrue(TEST_PEER_ID2 in webrtc_server.clients.keys())
 
+if __name__ == "__main__":
+    testing.unittest.main(verbosity=1)

@@ -176,3 +176,6 @@ class TestCallerApp(BasicTestCase):
         msg = yield client_socket.read_message()
         self.assertEqual(msg, webrtc_server.get_notice_msg(MY_CALLER_ID,
                                                 webrtc_server.CALL_TYPE, webrtc_server.CALL_DROPPED))
+
+if __name__ == "__main__":                                                                                                       
+    testing.unittest.main(verbosity=1)
