@@ -20,7 +20,7 @@ TEST_PEER_ID2 = 'PEER2'
 TEST_PEER_ID3 = 'PEER3'
 
 
-class BasicTestCase(testing.AsyncHTTPTestCase, testing.LogTrapTestCase):
+class BasicTestCase(testing.AsyncHTTPTestCase):
 
     def setUp(self):
         super(BasicTestCase, self).setUp()

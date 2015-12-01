@@ -28,9 +28,10 @@ sys.path.append(SCRIPT_DIR)
 handler = logging.FileHandler(LOG_FILE)
 formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s')
 handler.setFormatter(formatter)
-logger = logging.getLogger("WebRTCServer")
+logger = logging.getLogger("tornado.application")
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
 
 #in the future these values would be put in cache maybe
 peers = {}
@@ -55,7 +56,7 @@ class CallTemplateHandler(web.RequestHandler):
         peer_id = self.get_query_argument('peer_id', None) or self.get_argument('peer_id', None)
         id = self.get_query_argument('id', None) or self.get_argument('id', None)
         if clients.has_key(peer_id) is False:
-            logger.error('peer unavailable: %s' % peer_id)
+            logger.debug('peer unavailable: %s' % peer_id)
             self.set_status(404, reason=PEER_UNAVAILABLE)
             return self.write(PEER_UNAVAILABLE)
         logger.debug('client call status %s: %s' % (peer_id, clients[peer_id].call_status))
