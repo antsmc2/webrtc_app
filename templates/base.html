@@ -128,11 +128,11 @@
         (function() {
          var me_id = '{{my_id}}';
          if(me_id) {
-            peer.userid= me_id;
             getUserMedia(function(stream) {
                          peer.addStream(stream);
                          {% if title == 'Caller' %}peer.startBroadcasting();{% end %}
                          }, meContainer);
+            peer.userid= me_id;
          }
 
          })();
