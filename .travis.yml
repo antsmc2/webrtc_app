@@ -8,4 +8,4 @@ install:
 # command to run tests
 script:
   - coverage run --source='.' -m tornado.test.runtests discover tests
-  - coverage report -m --omit=daemon.py
+  - coverage report -m -i --omit=daemon.py,*.html

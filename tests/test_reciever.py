@@ -44,6 +44,17 @@ class TestRecieverApp(BasicTestCase):
         self.assertEqual(val2, test_msg2)
 
     @testing.gen_test
+    def test_caller_page_is_rendered_correctly(self):
+        reciever_page_uri = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
+                                        protocol='http', id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
+        response = yield self.http_client.fetch(reciever_page_uri)
+        recieve_ws_uri = self.make_url(webrtc_server.app.reverse_url('reciever_ws'),
+                                        id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
+        loader = template.Loader(webrtc_server.TEMPLATE_DIR)
+        self.assertEqual(response.body, loader.load('base.html').generate(recieve_ws_uri=recieve_ws_uri,
+                    my_id=TEST_PEER_ID1, peer_id=MY_CALLER_ID, title='Receiver'))
+
+    @testing.gen_test
     def test_get_or_post_to_recieve_page_url_gives_same_reciever_page(self):
         import urllib
         client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),

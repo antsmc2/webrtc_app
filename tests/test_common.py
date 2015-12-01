@@ -2,7 +2,7 @@ __author__ = 'anthony'
 
 import websocket
 import os, sys
-from tornado import testing
+from tornado import template
 from tornado import testing, httpserver, gen, websocket, httpclient
 import json
 

@@ -12,6 +12,21 @@ class TestCallerApp(BasicTestCase):
         self.assertEqual(response.body, webrtc_server.PEER_UNAVAILABLE)
 
     @testing.gen_test
+    def test_caller_page_is_rendered_correctly(self):
+        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
+                                                id=TEST_PEER_ID1)
+        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+                                        protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+        response = yield self.http_client.fetch(caller_page_uri)
+        caller_ws_uri = self.make_url(webrtc_server.app.reverse_url('caller_ws'),
+                                        id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+        loader = template.Loader(webrtc_server.TEMPLATE_DIR)
+        self.assertEqual(response.body, loader.load('base.html').generate(caller_ws_uri=caller_ws_uri,
+                                                                          my_id=MY_CALLER_ID,
+                                                                          peer_id=TEST_PEER_ID1,
+                                                                          title='Caller'))
+
+    @testing.gen_test
     def test_caller_is_accessible_when_client_websocket_is_online(self):
         code = -1
         client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
