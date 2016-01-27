@@ -147,38 +147,36 @@
         };
         meContainer = document.getElementById('me-cont');
         youContainer = document.getElementById('you-cont');
-        meVideo = null;
-        youVideo = null;
-        var w = window.innerWidth
+        w = window.innerWidth
                 || document.documentElement.clientWidth
                 || document.body.clientWidth;
 
-        var h = window.innerHeight
+        h = window.innerHeight
                 || document.documentElement.clientHeight
                 || document.body.clientHeight;
         resize_videos = function() {
-            var cw = document.documentElement.clientWidth
-                || document.body.clientWidth;
+            <!--var cw = document.documentElement.clientWidth-->
+                <!--|| document.body.clientWidth;-->
 
-            var ch = document.documentElement.clientHeight
-                || document.body.clientHeight;
+            <!--var ch = document.documentElement.clientHeight-->
+                <!--|| document.body.clientHeight;-->
 
-            if(meVideo)
-            {
-                var width = cw*0.15;
-                var height = ch*0.2;
-                meVideo.style.left = cw*0.655;
-                meVideo.style.width = width;
-                meVideo.style.height = height;
-            }
-            if(youVideo)
-            {
-                width = cw*0.7;
-                height = ch*0.8;
-                youVideo.style.left = (cw-width)/2;
-                youVideo.style.width = width;
-                youVideo.style.height = height;
-            }
+            <!--if(meContainer)-->
+            <!--{-->
+                <!--var width = w*0.15;-->
+                <!--var height = h*0.2;-->
+                <!--meContainer.style.left = cw*0.655;-->
+                <!--meContainer.style.width = width;-->
+                <!--meContainer.style.height = height;-->
+            <!--}-->
+            <!--if(youVideo)-->
+            <!--{-->
+                <!--width = w*0.7;-->
+                <!--height = h*0.8;-->
+                <!--youContainer.style.left = (cw-width)/2;-->
+                <!--youContainer.style.width = width;-->
+                <!--youContainer.style.height = height;-->
+            <!--}-->
         }
 
         window.onresize = resize_videos;
