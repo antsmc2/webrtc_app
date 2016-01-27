@@ -106,13 +106,7 @@
             var width;
             var height;
             var buttons = ['mute-video', ]
-            var w = window.innerWidth
-                || document.documentElement.clientWidth
-                || document.body.clientWidth;
 
-                var h = window.innerHeight
-                || document.documentElement.clientHeight
-                || document.body.clientHeight;
             if(e.parent_container)
             {
                 video.setAttribute('controls', false);
@@ -120,6 +114,7 @@
                 width = w*0.15;
                 height = h*0.2;
                 container.style.left = w*0.655;
+                meVideo = video;
             }
             else {
                 video.setAttribute('controls', true);
@@ -128,6 +123,7 @@
                 width = w*0.7;
                 height = h*0.8;
                 container.style.left = (w-width)/2;
+                youVideo = video;
                 }
            video = getMediaElement(video,
                                     {
@@ -151,7 +147,41 @@
         };
         meContainer = document.getElementById('me-cont');
         youContainer = document.getElementById('you-cont');
+        meVideo = null;
+        youVideo = null;
+        var w = window.innerWidth
+                || document.documentElement.clientWidth
+                || document.body.clientWidth;
 
+        var h = window.innerHeight
+                || document.documentElement.clientHeight
+                || document.body.clientHeight;
+        resize_videos = function() {
+            var cw = document.documentElement.clientWidth
+                || document.body.clientWidth;
+
+            var ch = document.documentElement.clientHeight
+                || document.body.clientHeight;
+
+            if(meVideo)
+            {
+                var width = cw*0.15;
+                var height = ch*0.2;
+                meVideo.style.left = cw*0.655;
+                meVideo.style.width = width;
+                meVideo.style.height = height;
+            }
+            if(youVideo)
+            {
+                width = cw*0.7;
+                height = ch*0.8;
+                youVideo.style.left = (cw-width)/2;
+                youVideo.style.width = width;
+                youVideo.style.height = height;
+            }
+        }
+
+        window.onresize = resize_videos;
 
         // you need to capture getUserMedia yourself!
         function getUserMedia(callback, parent_container) {
