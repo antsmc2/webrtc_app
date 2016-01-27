@@ -208,7 +208,7 @@ if __name__ == '__main__':
         elif 'restart' == sys.argv[1]:
             daemon.restart()
         else:
-            print 'unknown command'
+            print 'unknown command\nUsage python webrtc_server.py start|stop|restart PORT'
             sys.exit(2)
         sys.exit(0)
     else:
