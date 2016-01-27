@@ -8,7 +8,7 @@
 
             <style>
                 body {
-                    background: #615b75;
+                    background: url(static/images/bg2.png);
                 }
                 audio, video {
                     -moz-transition: all 1s ease;
@@ -20,21 +20,12 @@
                     vertical-align: top;
                 }
             #me-cont, #you-cont {
-                <!--background-color: #FF7D9D;-->
+
                     background-position: 0px 2px, 4px 35px, 29px 31px, 33px 6px,
                                          0px 36px, 4px 2px, 29px 6px, 33px 30px;
                     background-size: 58px 58px;
-                    <!--border-radius: 25px;-->
 
             }
-
-            <!--#me-cont {-->
-                <!--width: 20%;-->
-             <!--}-->
-
-            <!--#you-cont {-->
-                <!--width: 100%;-->
-             <!--}-->
 
             #me-cont {
                 width: 15%;
@@ -46,11 +37,11 @@
             #you-cont {
                 width: 70%;
                 height: 80%;
-                background: #7c6577;
+                background: url(static/images/video.jpg);
                 position: absolute;
                 top: 5%;
                 left: 15%;
-                <!--border:#FFF 1px;-->
+                border:#FFF 1px;
             }
 
                 </style>
@@ -106,7 +97,13 @@
             var width;
             var height;
             var buttons = ['mute-video', ]
+            var w = window.innerWidth
+                || document.documentElement.clientWidth
+                || document.body.clientWidth;
 
+                var h = window.innerHeight
+                || document.documentElement.clientHeight
+                || document.body.clientHeight;
             if(e.parent_container)
             {
                 video.setAttribute('controls', false);
@@ -114,7 +111,6 @@
                 width = w*0.15;
                 height = h*0.2;
                 container.style.left = w*0.655;
-                meVideo = video;
             }
             else {
                 video.setAttribute('controls', true);
@@ -123,7 +119,6 @@
                 width = w*0.7;
                 height = h*0.8;
                 container.style.left = (w-width)/2;
-                youVideo = video;
                 }
            video = getMediaElement(video,
                                     {
@@ -131,7 +126,6 @@
                                     width: width,
                                     height: height,
                                     });
-           <!--video.style.borderRadius = "25px 0px 25px 25px";-->
             container.appendChild(video);
         };
 
@@ -147,39 +141,7 @@
         };
         meContainer = document.getElementById('me-cont');
         youContainer = document.getElementById('you-cont');
-        w = window.innerWidth
-                || document.documentElement.clientWidth
-                || document.body.clientWidth;
 
-        h = window.innerHeight
-                || document.documentElement.clientHeight
-                || document.body.clientHeight;
-        resize_videos = function() {
-            <!--var cw = document.documentElement.clientWidth-->
-                <!--|| document.body.clientWidth;-->
-
-            <!--var ch = document.documentElement.clientHeight-->
-                <!--|| document.body.clientHeight;-->
-
-            <!--if(meContainer)-->
-            <!--{-->
-                <!--var width = w*0.15;-->
-                <!--var height = h*0.2;-->
-                <!--meContainer.style.left = cw*0.655;-->
-                <!--meContainer.style.width = width;-->
-                <!--meContainer.style.height = height;-->
-            <!--}-->
-            <!--if(youVideo)-->
-            <!--{-->
-                <!--width = w*0.7;-->
-                <!--height = h*0.8;-->
-                <!--youContainer.style.left = (cw-width)/2;-->
-                <!--youContainer.style.width = width;-->
-                <!--youContainer.style.height = height;-->
-            <!--}-->
-        }
-
-        window.onresize = resize_videos;
 
         // you need to capture getUserMedia yourself!
         function getUserMedia(callback, parent_container) {
