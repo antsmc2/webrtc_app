@@ -118,6 +118,7 @@
                 container = e.parent_container;
                 width = w*0.2;
                 height = h*0.2;
+                container.style.left = w*0.62;
             }
             else {
                 video.setAttribute('controls', true);
@@ -125,8 +126,8 @@
                 buttons.push('mute-audio');
                 width = w*0.7;
                 height = h*0.8;
+                container.style.left = (w-width)/2;
                 }
-           container.style.left = (w-width)/2;
            video = getMediaElement(video,
                                     {
                                     buttons: buttons,
