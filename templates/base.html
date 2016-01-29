@@ -46,7 +46,6 @@
             }
 
                 </style>
-
             <script src="static/rtc-lib/PeerConnection.js"> </script>
             <script src="static/rtc-lib/getMediaElement.js"> </script>
             <script src="static/rtc-lib/web_socket.js"> </script>
@@ -89,39 +88,36 @@
 
         peer.onStreamAdded = function(e) {
             var video = e.mediaElement;
-            console.info('created video ' + video);
-             if(!(video.getAttribute('mozSrcObject') || video.getAttribute('src')))
-                return;//video.style.display = "none";
-
-            video.autoplay = true;
-            var container;
-            var width;
-            var height;
+            var width = null;
+            var height = null;
             var buttons = ['mute-video', ]
             var w = window.innerWidth
                 || document.documentElement.clientWidth
                 || document.body.clientWidth;
 
-                var h = window.innerHeight
+            var h = window.innerHeight
                 || document.documentElement.clientHeight
                 || document.body.clientHeight;
+            if(!(video.getAttribute('mozSrcObject') || video.getAttribute('src')))
+                return;//video.style.display = "none";
+            video.setAttribute('controls', true);
+            var container = null;
             if(e.parent_container)
             {
-                video.setAttribute('controls', false);
                 container = e.parent_container;
                 width = w*0.15;
-                height = h*0.2;
-                container.style.left = w*0.655;
+                height = h*0.20;
+                meContainer.style.left = w*0.655;
             }
             else {
-                video.setAttribute('controls', true);
                 container = youContainer;
                 buttons.push('mute-audio');
                 width = w*0.7;
                 height = h*0.8;
-                container.style.left = (w-width)/2;
-                }
-           video = getMediaElement(video,
+                youContainer.style.left = w*0.15;
+            }
+            video.play();
+            video = getMediaElement(video,
                                     {
                                     buttons: buttons,
                                     width: width,
