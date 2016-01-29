@@ -227,16 +227,16 @@
     iceServers.iceServers = [];
 
 iceServers.iceServers.push({
-    url: 'turn:turn.anyfirewall.com:443?transport=tcp',
+    urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
     credential: 'webrtc',
     username: 'webrtc'
 });
 
 iceServers.iceServers.push({
-	url:'stun:202.153.34.169:8002?transport=tcp'
+	urls:'stun:202.153.34.169:8002?transport=tcp'
 });
 iceServers.iceServers.push({
-    url: 'turn:202.153.34.169:8003?transport=tcp',
+    urls: 'turn:202.153.34.169:8003?transport=tcp',
     credential: 'dhanush123',
     username: 'dhanush'
 });
@@ -249,11 +249,11 @@ iceServers.iceServers.push({
 
     var offerAnswerConstraints = {
         optional: [],
-        mandatory: {
-            OfferToReceiveAudio: true,
-            OfferToReceiveVideo: true
-        }
+        mandatory: {"offerToReceiveAudio":true,"offerToReceiveVideo":true}
     };
+    if(isFirefox) {
+        offerAnswerConstraints = {"offerToReceiveAudio":true,"offerToReceiveVideo":true};
+    }
 
     function getToken() {
         return Math.round(Math.random() * 9999999999) + 9999999999;
@@ -359,4 +359,5 @@ iceServers.iceServers.push({
 	};
 	
 })();
+
 
