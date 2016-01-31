@@ -340,7 +340,7 @@ iceServers.iceServers.push({
         return mergein;
     }
 	
-	window.URL = window.webkitURL || window.URL;
+	window.URL = window.URL || window.webkitURL;
 	navigator.getMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 	navigator.getUserMedia = function(hints, onsuccess, onfailure) {
 		if(!hints) hints = {audio:true,video:true};
@@ -359,5 +359,4 @@ iceServers.iceServers.push({
 	};
 	
 })();
-
 

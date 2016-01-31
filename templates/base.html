@@ -1,184 +1,60 @@
+<!doctype html>
 <html>
-    <head>
-        <title>{{ title }}</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-        <!-- link rel="stylesheet" href="//cdn.webrtc-experiment.com/style.css" -->
-
-            <style>
-                body {
-                    background: url(static/images/bg2.jpg) no-repeat;
-                    background-size: cover;
-                }
-                audio, video {
-                    -moz-transition: all 1s ease;
-                    -ms-transition: all 1s ease;
-
-                    -o-transition: all 1s ease;
-                    -webkit-transition: all 1s ease;
-                    transition: all 1s ease;
-                    vertical-align: top;
-                }
-            #me-cont, #you-cont {
-
-                    background-position: 0px 2px, 4px 35px, 29px 31px, 33px 6px,
-                                         0px 36px, 4px 2px, 29px 6px, 33px 30px;
-                    background-size: 58px 58px;
-
-            }
-
-            #me-cont {
-                width: 15%;
-                position: absolute;
-                top: 60%;
-                left: 65.5%;
-                }
-
-            #you-cont {
-                width: 70%;
-                height: 80%;
-                background: url(static/images/video.jpg);
-                position: absolute;
-                top: 5%;
-                left: 15%;
-                border:#FFF 1px;
-            }
-
-                </style>
-            <script src="static/rtc-lib/PeerConnection.js"> </script>
-            <script src="static/rtc-lib/getMediaElement.js"> </script>
-            <script src="static/rtc-lib/web_socket.js"> </script>
-    </head>
-    <body>
-        <section class="videos">
-            <div id="videos-container">
-                <div id="you-cont"></div>
-                <div id="me-cont"></div>
-            </div>
-        </section>
-
-        <script>
-            var websocket = new WebSocket('{% if title == 'Caller' %}{% raw caller_ws_uri %}{%else%}{% raw recieve_ws_uri %}{% end %}');
-            websocket.onerror = function() {
-                //location.reload();
-            };
-
-        websocket.onclose = function() {
-            //location.reload();
-        };
-
-        websocket.push = websocket.send;
-        websocket.send = function(data) {
-            websocket.push(JSON.stringify(data));
-        };
-
-        var peer = new PeerConnection(websocket);
-        caller_id = undefined;
-        peer.onUserFound = function(userid) {
-            if(caller_id)
-                return;
-            caller_id = userid;
-            getUserMedia(function(stream) {
-                             peer.addStream(stream);
-                             peer.sendParticipationRequest(caller_id);
-
-                             });
-        };
-
-        peer.onStreamAdded = function(e) {
-            var video = e.mediaElement;
-            var width = null;
-            var height = null;
-            var buttons = ['mute-video', ]
-            var w = window.innerWidth
+<head>
+  <title>{{ title }}</title>
+  <meta charset="utf-8">
+  <link href="static/rtc-lib/chat.css" rel="stylesheet">
+  <script src="static/rtc-lib/web_socket.js"> </script>
+  <script type="text/javascript" src="static/rtc-lib/chatclient.js"></script>
+  <script src="static/rtc-lib/adapter.js"></script>
+</head>
+<body>
+  <div id="container" class="flexChild columnParent">
+    <div class="flexChild rowParent" id="feedback-container">
+      <div class="flexChild" id="camera-container">
+        <div class="camera-box">
+          <video id="received_video" autoplay></video>
+          <video id="local_video" autoplay="autoplay" muted="muted"></video>
+          <button id="hangup-button" onclick="hangUpCall();" disabled="disabled">
+            Hang Up
+          </button>
+        </div>
+      </div>
+       <div class="flexChild" id="chat-container">
+          <iframe id="chatbox" srcdoc="<body><p>{% if title == 'Caller' %}Waiting for {{peer_id}} to come online...
+          {%else%} Welcome!{% end %}</p></body>"></iframe>
+        </div>
+    </div>
+    <br />
+    <br />
+    <div class="flexChild rowParent" id="control-row">
+      <div class="flexChild" id="empty-container"></div>
+      <div class="flexChild" id="chat-controls-container">
+        Chat: <input id="text" type="text" name="text" size="80" maxlength="256"
+          placeholder="Chat with {{peer_id}}!" autocomplete="off" onkeyup="handleKey(event)"
+          disabled="disabled">
+        <button id="send" onclick=handleSendButton disabled="disabled">Send</button>
+      </div>
+    </div>
+  </div>
+	<script type="text/javascript">
+		(function() {
+		    {% if title == 'Caller' %}
+			    connect('{% raw caller_ws_uri %}', '{{my_id}}', '{{peer_id}}', false);
+			{%else%}
+			    connect('{% raw recieve_ws_uri %}', '{{my_id}}', '{{peer_id}}', true);
+			{% end %}
+			var w = window.innerWidth
                 || document.documentElement.clientWidth
                 || document.body.clientWidth;
 
             var h = window.innerHeight
                 || document.documentElement.clientHeight
                 || document.body.clientHeight;
-            if(!(video.getAttribute('mozSrcObject') || video.getAttribute('src')))
-                return;//video.style.display = "none";
-            video.setAttribute('controls', true);
-            var container = null;
-            if(e.parent_container)
-            {
-                container = e.parent_container;
-                width = w*0.15;
-                height = h*0.20;
-                meContainer.style.left = w*0.655;
-            }
-            else {
-                container = youContainer;
-                buttons.push('mute-audio');
-                width = w*0.7;
-                height = h*0.8;
-                youContainer.style.left = w*0.15;
-            }
-            video.play();
-            video = getMediaElement(video,
-                                    {
-                                    buttons: buttons,
-                                    width: width,
-                                    height: height,
-                                    });
-            container.appendChild(video);
-        };
-
-        peer.onStreamEnded = function(e) {
-            var video = e.mediaElement;
-            if (video) {
-                video.style.opacity = 0;
-                setTimeout(function() {
-                           video.parentNode.removeChild(video);
-                           scaleVideos();
-                           }, 1000);
-            }
-        };
-        meContainer = document.getElementById('me-cont');
-        youContainer = document.getElementById('you-cont');
-
-
-        // you need to capture getUserMedia yourself!
-        function getUserMedia(callback, parent_container) {
-            var hints = {
-                audio: true,
-                video: {
-                    optional: [],
-                    mandatory: {}
-                }
-            };
-            navigator.getUserMedia(hints, function(stream) {
-                                   var video = document.createElement('video');
-                                   video.src = URL.createObjectURL(stream);
-                                   video.controls = true;
-                                   video.muted = true;
-
-                                   peer.onStreamAdded({
-                                                      mediaElement: video,
-                                                      userid: 'self',
-                                                      stream: stream,
-                                                      parent_container: parent_container
-                                                      });
-
-                                   callback(stream);
-                                   });
-        }
-
-        (function() {
-         var me_id = '{{my_id}}';
-         if(me_id) {
-            getUserMedia(function(stream) {
-                         peer.addStream(stream);
-                         {% if title == 'Caller' %}peer.startBroadcasting();{% end %}
-                         }, meContainer);
-            peer.userid= me_id;
-         }
-
-         })();
-            </script>
-
-    </body>
-
+            container = document.getElementById('container');
+            container.style.width = 0.98*w + 'px';
+            container.style.height = 0.95*h + 'px';
+		})();
+	</script>
+</body>
 </html>
