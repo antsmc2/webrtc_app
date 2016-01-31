@@ -43,6 +43,21 @@ var myUsername = null;
 var targetUsername = null;      // To store username of other peer
 var myPeerConnection = null;    // RTCPeerConnection
 
+var iceServers = [
+  {
+	urls:'stun:202.153.34.169:8002?transport=tcp'
+  },
+  {
+    urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+    credential: 'webrtc',
+    username: 'webrtc'
+  },
+  {
+    urls: 'turn:202.153.34.169:8003?transport=tcp',
+    credential: 'dhanush123',
+    username: 'dhanush'
+  }]
+
 // Output logging information to console.
 
 function log(text) {
@@ -100,7 +115,7 @@ function connect(serverUrl, username, peer_id, notify_peer) {
   	}
   	serverUrl = scheme + "://" + myHostname + ":6503";
   }
-  connection = new WebSocket(serverUrl, "json");
+  connection = new WebSocket(serverUrl);
 
   connection.onopen = function(event) {
     document.getElementById("text").disabled = false;
@@ -217,13 +232,7 @@ function createPeerConnection() {
   // STUN server.
 
   myPeerConnection = new RTCPeerConnection({
-      iceServers: [     // Information about ICE servers - Use your own!
-        {
-          urls: "turn:" + myHostname,  // A TURN server
-          username: "webrtc",
-          credential: "turnserver"
-        }
-      ]
+      iceServers: iceServers
   });
 
   // Set up event handlers for the ICE negotiation process.
