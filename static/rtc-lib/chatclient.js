@@ -45,6 +45,12 @@ var myPeerConnection = null;    // RTCPeerConnection
 
 var iceServers = [
   {
+    urls: 'stun.l.google.com:19302',
+  },
+  {
+    urls: 'stun01.sipphone.com',
+  },
+  {
 	urls:'stun:202.153.34.169:8002?transport=tcp'
   },
   {
@@ -52,6 +58,11 @@ var iceServers = [
     credential: 'webrtc',
     username: 'webrtc'
   },
+  {
+    credential: 'EUcQoEAIhZYRZDt0Gfihuw7UQ1WqnRf8PUBr5LgjSkM=',
+    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+    username: '18b807a1bfef757498659fe97bd91beb38b48f5b14a827a7c435fe0129f2a37a'
+  }
   {
     urls: 'turn:202.153.34.169:8003?transport=tcp',
     credential: 'dhanush123',
