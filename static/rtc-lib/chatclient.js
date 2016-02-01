@@ -152,7 +152,7 @@ function connect(serverUrl, username, peer_id, notify_peer) {
         break;
 
       case "message":
-        text = "(" + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br>";
+        text = '<span class="you-msg" style="color: #483D8B;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
         break;
 
       case "rejectusername":
@@ -216,7 +216,8 @@ function handleSendButton() {
   document.getElementById("text").value = "";
   var time = new Date(msg.date);
   var timeStr = time.toLocaleTimeString();
-  var text =  "(" + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br>";
+  var text =  '<span class="me-msg" style="color: #4169E1;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
+  var chatFrameDocument = document.getElementById("chatbox").contentDocument;
   if (text.length) {
       chatFrameDocument.write(text);
       document.getElementById("chatbox").contentWindow.scrollByPages(1);
