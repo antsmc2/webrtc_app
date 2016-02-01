@@ -214,6 +214,13 @@ function handleSendButton() {
   };
   sendToServer(msg);
   document.getElementById("text").value = "";
+  var time = new Date(msg.date);
+  var timeStr = time.toLocaleTimeString();
+  var text =  "(" + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br>";
+  if (text.length) {
+      chatFrameDocument.write(text);
+      document.getElementById("chatbox").contentWindow.scrollByPages(1);
+    }
 }
 
 // Handler for keyboard events. This is used to intercept the return and
