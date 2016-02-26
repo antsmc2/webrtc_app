@@ -52,20 +52,24 @@ var iceServers = [
 	urls:'stun:202.153.34.169:8002?transport=tcp'
   },
   {
+	urls:'stun:global.stun.twilio.com:3478?transport=udp'
+  },
+  {
     urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
     credential: 'webrtc',
     username: 'webrtc'
   },
   {
-    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-    credential: 'EUcQoEAIhZYRZDt0Gfihuw7UQ1WqnRf8PUBr5LgjSkM=',
-    username: '18b807a1bfef757498659fe97bd91beb38b48f5b14a827a7c435fe0129f2a37a'
-  },
-  {
     urls: 'turn:202.153.34.169:8003?transport=tcp',
     credential: 'dhanush123',
     username: 'dhanush'
-  }];
+  },
+  {
+    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+    credential: '1+Y2u++2/2XV1Ze/chDN7i2HgL6BTKcVBnDCDbWCMUU=',
+    username: '29df088460ecdabfb667362a6a5c71c8e20a8c941b5586df2455e7ca67719153'
+  }
+  ];
 
 // Output logging information to console.
 
