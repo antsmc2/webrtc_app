@@ -15,7 +15,7 @@ class TestRecieverApp(BasicTestCase):
                                         protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
         try:
             response = yield self.http_client.fetch(reciever_page_uri)
-            reciever_ws_uri = self.make_url(webrtc_server.app.reverse_url('reciever_ws'),
+            reciever_ws_uri = self.make_relative_url(webrtc_server.app.reverse_url('reciever_ws'),
                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
             self.assertIn(reciever_ws_uri, response.body)
             code = response.code
@@ -48,7 +48,7 @@ class TestRecieverApp(BasicTestCase):
         reciever_page_uri = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
                                         protocol='http', id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
         response = yield self.http_client.fetch(reciever_page_uri)
-        recieve_ws_uri = self.make_url(webrtc_server.app.reverse_url('reciever_ws'),
+        recieve_ws_uri = self.make_relative_url(webrtc_server.app.reverse_url('reciever_ws'),
                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
         loader = template.Loader(webrtc_server.TEMPLATE_DIR)
         self.assertEqual(response.body, loader.load('base.html').generate(recieve_ws_uri=recieve_ws_uri,
