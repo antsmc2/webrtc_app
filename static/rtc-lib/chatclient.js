@@ -120,7 +120,9 @@ function connect(path, username, peer_id, notify_peer) {
   if (document.location.protocol === "https:") {
       scheme += "s";
   }
-  serverUrl = scheme + "://" + myHostname + myPort + path;
+  var serverUrl = scheme + "://" + myHostname + ':' + myPort + path;
+
+  console.log('using server url: ' + serverUrl);
 
   connection = new WebSocket(serverUrl);
 
