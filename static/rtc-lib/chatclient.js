@@ -14,6 +14,7 @@
 // Get our hostname
 
 var myHostname = window.location.hostname;
+var myPort = window.location.port
 console.log("Hostname: " + myHostname);
 
 // WebSocket chat/signaling channel variables.
@@ -109,20 +110,18 @@ function setUsername(username, notify_peer) {
 
 // Open and configure the connection to the WebSocket server.
 
-function connect(serverUrl, username, peer_id, notify_peer) {
+function connect(path, username, peer_id, notify_peer) {
 
-  if(!serverUrl)
-  {
-  	var scheme = "ws";
+  var scheme = "ws";
 
-  	// If this is an HTTPS connection, we have to use a secure WebSocket
-  	// connection too, so add another "s" to the scheme.
+  // If this is an HTTPS connection, we have to use a secure WebSocket
+  // connection too, so add another "s" to the scheme.
 
-  	if (document.location.protocol === "https:") {
-    	scheme += "s";
-  	}
-  	serverUrl = scheme + "://" + myHostname + ":6503";
+  if (document.location.protocol === "https:") {
+      scheme += "s";
   }
+  serverUrl = scheme + "://" + myHostname + myPort + path;
+
   connection = new WebSocket(serverUrl);
 
   connection.onopen = function(event) {

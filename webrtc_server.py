@@ -9,11 +9,13 @@ from urllib import urlencode, quote
 from collections import OrderedDict
 
 APP_PORT = 8004
+WS_PROTOCOL = 'wss'
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATE_DIR = os.path.join(SCRIPT_DIR, 'templates')
 STATIC_DIR = os.path.join(SCRIPT_DIR, 'static')
 LOG_FILE = os.path.join(SCRIPT_DIR, 'webrtc.log')
 PID_FILE = os.path.join(SCRIPT_DIR, 'webrtc.pid')
+
 
 CALL_INIT = 'INI'
 CALL_ONGOING = 'IN_PROG'
@@ -45,10 +47,14 @@ def get_notice_msg(caller_id, msg_type, status):
      }
     return json.dumps(data)
 
-def make_url(host, path, protocol='ws', **kwargs):
+def make_url(host, path, protocol=WS_PROTOCOL, **kwargs):
     base_url = '%s://%s%s' % (protocol, host, path)
     query_string =  urlencode(OrderedDict(kwargs))
     return '%s?%s' % (base_url, query_string)
+
+def make_relative_url(path, **kwargs):
+    query_string =  urlencode(OrderedDict(kwargs))
+    return '%s?%s' % (path, query_string)
 
 class CallTemplateHandler(web.RequestHandler):
 
@@ -63,7 +69,7 @@ class CallTemplateHandler(web.RequestHandler):
         if clients[peer_id].call_status == LoginHandler.BUSY:
             self.set_status(423, reason=PEER_BUSY)
             return self.write(PEER_BUSY)
-        caller_ws_uri = make_url(self.request.host, app.reverse_url('caller_ws'), id=id, peer_id=peer_id)
+        caller_ws_uri = make_relative_url(app.reverse_url('caller_ws'), id=id, peer_id=peer_id)
         self.render(os.path.join(TEMPLATE_DIR, "base.html"),
                     caller_ws_uri=caller_ws_uri, my_id=id, peer_id=peer_id, title='Caller')
 
@@ -77,7 +83,7 @@ class RecieveTemplateHandler(web.RequestHandler):
     def process_request(self, *args, **kwargs):
         peer_id = self.get_query_argument('peer_id', None) or self.get_argument('peer_id', None)
         id = self.get_query_argument('id', None) or self.get_argument('id', None)
-        recieve_ws_uri = make_url(self.request.host, app.reverse_url('reciever_ws'), id=id, peer_id=peer_id)
+        recieve_ws_uri = make_relative_url(app.reverse_url('reciever_ws'), id=id, peer_id=peer_id)
         self.render(os.path.join(TEMPLATE_DIR, "base.html"), recieve_ws_uri=recieve_ws_uri,
                     my_id=id, peer_id=peer_id, title='Receiver')
 

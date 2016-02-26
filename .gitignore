@@ -61,3 +61,6 @@ target/
 
 #pid files
 *.pid
+
+#py editor stuff
+*.*~
