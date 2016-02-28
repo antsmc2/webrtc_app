@@ -496,15 +496,16 @@ function invite(user_id) {
       log("-- Local video stream obtained");
       document.getElementById("local_video").src = window.URL.createObjectURL(localStream);
       document.getElementById("local_video").srcObject = localStream;
-      initCall();
 //      log("-- Calling myPeerConnection.addStream()");
       myPeerConnection.addStream(localStream);
+      initOffer();
     })
     .catch(handleGetUserMediaError);
   }
+
 }
 
-function initCall()
+function initOffer()
 {
     log("---> Creating offer");
     myPeerConnection.createOffer().then(function(offer) {
