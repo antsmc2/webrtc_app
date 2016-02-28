@@ -43,6 +43,7 @@ var mediaConstraints = {
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
 var myPeerConnection = null;    // RTCPeerConnection
+var myLocalStream = null;       //my local video stream
 
 var iceServers = [
   {
@@ -276,22 +277,6 @@ function createPeerConnection() {
 
 function handleNegotiationNeededEvent() {
   log("*** Negotiation needed");
-
-  log("---> Creating offer");
-  myPeerConnection.createOffer().then(function(offer) {
-    log("---> Creating new description object to send to remote peer");
-    return myPeerConnection.setLocalDescription(offer);
-  })
-  .then(function() {
-    log("---> Sending offer to remote peer");
-    sendToServer({
-      name: myUsername,
-      target: targetUsername,
-      type: "video-offer",
-      sdp: myPeerConnection.localDescription
-    });
-  })
-  .catch(reportError);
 }
 
 // Called by the WebRTC layer when a stream starts arriving from the
@@ -299,9 +284,10 @@ function handleNegotiationNeededEvent() {
 // example.
 
 function handleAddStreamEvent(event) {
-  log("*** Stream added");
+  log("*** adding stream");
   document.getElementById("received_video").srcObject = event.stream;
   document.getElementById("hangup-button").disabled = false;
+  log("*** adding stream");
 }
 
 // An event handler which is called when the remote end of the connection
@@ -420,6 +406,7 @@ function closeVideoCall() {
     myPeerConnection.onsignalingstatechange = null;
     myPeerConnection.onicegatheringstatechange = null;
     myPeerConnection.onnotificationneeded = null;
+    myPeerConnection.onnegotiationneeded = null;
 
     // Stop the videos
 
@@ -474,8 +461,7 @@ function hangUpCall() {
 // Handle a click on an item in the user list by inviting the clicked
 // user to video chat. Note that we don't actually send a message to
 // the callee here -- calling RTCPeerConnection.addStream() issues
-// a |notificationneeded| event, so we'll let our handler for that
-// make the offer.
+// a |negotiationneeded| event
 
 function invite(user_id) {
   log("Starting to prepare an invitation");
@@ -505,8 +491,25 @@ function invite(user_id) {
       document.getElementById("local_video").src = window.URL.createObjectURL(localStream);
       document.getElementById("local_video").srcObject = localStream;
 
-      log("-- Calling myPeerConnection.addStream()");
-      myPeerConnection.addStream(localStream);
+//      log("-- Calling myPeerConnection.addStream()");
+      return myPeerConnection.addStream(localStream);
+    })
+    .then(function() {
+      log("---> Creating offer");
+      myPeerConnection.createOffer().then(function(offer) {
+        log("---> Creating new description object to send to remote peer");
+        return myPeerConnection.setLocalDescription(offer);
+      })
+      .then(function() {
+        log("---> Sending offer to remote peer");
+        sendToServer({
+          name: myUsername,
+          target: targetUsername,
+          type: "video-offer",
+          sdp: myPeerConnection.localDescription
+        });
+      })
+      .catch(reportError);
     })
     .catch(handleGetUserMediaError);
   }
