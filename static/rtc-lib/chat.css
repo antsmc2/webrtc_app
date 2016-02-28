@@ -19,8 +19,13 @@
 
 /* The <iframe> containing the chat scrollback */
 #chatbox {
-  height:100%;
+  height:95%;
   background: white;
+  overflow: auto;
+}
+
+#welcome {
+    text-align: center;
 }
 
 /* The video panel */
@@ -32,6 +37,7 @@
   vertical-align:top;
   position:relative;
   overflow:auto;
+  z-index: 10;
 
 }
 
@@ -181,4 +187,8 @@ body, #container {
 
 .you-msg {
 	color: #4682B4;
+}
+
+#chat-controls-container {
+    z-index: 10000;
 }

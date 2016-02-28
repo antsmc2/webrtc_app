@@ -132,14 +132,15 @@ function connect(path, username, peer_id, notify_peer) {
   connection = new WebSocket(serverUrl);
 
   connection.onopen = function(event) {
-    document.getElementById("text").disabled = false;
-    document.getElementById("send").disabled = false;
     setUsername(username, notify_peer);
     log('connection opened.');
   };
 
   connection.onmessage = function(evt) {
-    var chatFrameDocument = document.getElementById("chatbox").contentDocument;
+    if (document.getElementById("send").disabled) {
+      document.getElementById("text").disabled = false;
+      document.getElementById("send").disabled = false;
+    }
     var text = "";
     var msg = JSON.parse(evt.data);
     log("Message received: ");
@@ -154,6 +155,7 @@ function connect(path, username, peer_id, notify_peer) {
 
       case "username":
         text = "<b>User <em>" + msg.name + "</em> signed in at " + timeStr + "</b><br>";
+        document.getElementById("welcome").innerHTML = '';
         invite(msg.name);
         break;
 
@@ -202,10 +204,16 @@ function connect(path, username, peer_id, notify_peer) {
     // scroll the chat panel so that the new text is visible.
 
     if (text.length) {
-      chatFrameDocument.write(text);
-      document.getElementById("chatbox").contentWindow.scrollByPages(1);
+      updateChat(text);
+//      document.getElementById("chatbox").contentWindow.scrollByPages(1);
     }
   };
+}
+
+function updateChat(text)
+{
+  var chatPane = document.getElementById("chatbox");
+  chatPane.innerHTML = chatPane.innerHTML + '<p class="chat">' + text + '</p>';
 }
 
 // Handles a click on the Send button (or pressing return/enter) by
@@ -223,10 +231,8 @@ function handleSendButton() {
   var time = new Date(msg.date);
   var timeStr = time.toLocaleTimeString();
   var text =  '<span class="me-msg" style="color: #4169E1;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
-  var chatFrameDocument = document.getElementById("chatbox").contentDocument;
   if (text.length) {
-      chatFrameDocument.write(text);
-      document.getElementById("chatbox").contentWindow.scrollByPages(1);
+      updateChat(text);
     }
 }
 

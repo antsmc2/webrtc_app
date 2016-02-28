@@ -21,8 +21,8 @@
         </div>
       </div>
        <div class="flexChild" id="chat-container">
-          <iframe id="chatbox" srcdoc="<body><p>{% if title == 'Caller' %}Waiting for {{peer_id}} to come online...
-          {%else%} Welcome!{% end %}</p></body>"></iframe>
+          <div id="chatbox"><p id="welcome">{% if title == 'Caller' %}Waiting for {{peer_id}} to come online...
+          {%else%} Welcome!{% end %}</p></div>
         </div>
     </div>
     <br />
@@ -32,7 +32,7 @@
       <div class="flexChild" id="chat-controls-container">
         Chat: <input id="text" type="text" name="text" size="80" maxlength="256"
           placeholder="Chat with {{peer_id}}!" autocomplete="off" onkeyup="handleKey(event)"
-          disabled="disabled">
+           disabled="disabled"/>
         <button id="send" onclick=handleSendButton disabled="disabled">Send</button>
       </div>
     </div>
