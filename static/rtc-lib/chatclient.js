@@ -290,10 +290,10 @@ function handleNegotiationNeededEvent() {
 // example.
 
 function handleAddStreamEvent(event) {
-  log("*** adding stream");
+  log("*** adding remote stream");
   document.getElementById("received_video").srcObject = event.stream;
   document.getElementById("hangup-button").disabled = false;
-  log("*** adding stream");
+  log("*** added remote stream");
 }
 
 // An event handler which is called when the remote end of the connection
@@ -496,29 +496,31 @@ function invite(user_id) {
       log("-- Local video stream obtained");
       document.getElementById("local_video").src = window.URL.createObjectURL(localStream);
       document.getElementById("local_video").srcObject = localStream;
-
+      initCall();
 //      log("-- Calling myPeerConnection.addStream()");
-      return myPeerConnection.addStream(localStream);
-    })
-    .then(function() {
-      log("---> Creating offer");
-      myPeerConnection.createOffer().then(function(offer) {
-        log("---> Creating new description object to send to remote peer");
-        return myPeerConnection.setLocalDescription(offer);
-      })
-      .then(function() {
-        log("---> Sending offer to remote peer");
-        sendToServer({
-          name: myUsername,
-          target: targetUsername,
-          type: "video-offer",
-          sdp: myPeerConnection.localDescription
-        });
-      })
-      .catch(reportError);
+      myPeerConnection.addStream(localStream);
     })
     .catch(handleGetUserMediaError);
   }
+}
+
+function initCall()
+{
+    log("---> Creating offer");
+    myPeerConnection.createOffer().then(function(offer) {
+      log("---> Creating new description object to send to remote peer");
+      return myPeerConnection.setLocalDescription(offer);
+    })
+    .then(function() {
+      log("---> Sending offer to remote peer");
+      sendToServer({
+        name: myUsername,
+        target: targetUsername,
+        type: "video-offer",
+        sdp: myPeerConnection.localDescription
+      });
+    })
+    .catch(reportError);
 }
 
 // Accept an offer to video chat. We configure our local settings,
