@@ -192,3 +192,11 @@ body, #container {
 #chat-controls-container {
     z-index: 10000;
 }
+
+#text {
+    min-height: 25px;
+}
+
+#send {
+    min-height: 25px;
+}
