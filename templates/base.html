@@ -5,8 +5,9 @@
   <meta charset="utf-8">
   <link href="static/rtc-lib/chat.css" rel="stylesheet">
   <!--script src="static/rtc-lib/web_socket.js"> </script -->
-  <script type="text/javascript" src="static/rtc-lib/chatclient.js"></script>
+  <script src="static/rtc-lib/common.js"></script>
   <script src="static/rtc-lib/adapter.js"></script>
+  <script type="text/javascript" src="static/rtc-lib/videochat.js"></script>
 </head>
 <body>
   <div id="container" class="flexChild columnParent">
@@ -39,6 +40,7 @@
   </div>
 	<script type="text/javascript">
 		(function() {
+		    start();
 		    {% if title == 'Caller' %}
 			    connect('{% raw caller_ws_uri %}', '{{my_id}}', '{{peer_id}}', false);
 			{%else%}
