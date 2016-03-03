@@ -369,14 +369,11 @@ function handleVideoAnswerMsg(msg) {
 
 function onIceCandidate(pc, event) {
   if (event.candidate) {
-    myPeerConnection.addIceCandidate(new RTCIceCandidate(event.candidate),
-        function() {
-          onAddIceCandidateSuccess(pc,event);
-        },
-        function(err) {
-          onAddIceCandidateError(pc, err);
-        }
-    );
+    sendToServer({
+      type: "new-ice-candidate",
+      target: targetUsername,
+      candidate: event.candidate
+    });
     trace(getName(pc) + ' ICE candidate: \n' + event.candidate.candidate);
   }
 }
