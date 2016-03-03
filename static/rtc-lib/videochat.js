@@ -314,6 +314,7 @@ function gotRemoteStream(e) {
   remoteVideo.srcObject = e.stream;
   remoteVideo.src = window.URL.createObjectURL(e.stream);
   trace('pc2 received remote stream');
+  document.getElementById("hangup-button").disabled = false;
 }
 
 
