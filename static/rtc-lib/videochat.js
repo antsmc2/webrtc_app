@@ -16,6 +16,7 @@ var mediaConstraints = {
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
 var myPeerConnection = null;    // RTCPeerConnection
+var clientID = 0;
 
 var remoteVideo = null;
 var localVideo = null;
@@ -77,6 +78,7 @@ function broadcastNew(username, notify_peer) {
 function connect(path, username, peer_id, notify_peer) {
   myUsername = username;
   targetUsername = peer_id;
+  clientID = myUsername;
   var scheme = "ws";
 
   // If this is an HTTPS connection, we have to use a secure WebSocket
@@ -192,6 +194,37 @@ function updateChat(text)
 {
   var chatPane = document.getElementById("chatbox");
   chatPane.innerHTML = chatPane.innerHTML + '<p class="chat">' + text + '</p>';
+}
+
+// Handler for keyboard events. This is used to intercept the return and
+// enter keys so that we can call send() to transmit the entered text
+// to the server.
+function handleKey(evt) {
+  if (evt.keyCode === 13 || evt.keyCode === 14) {
+    if (!document.getElementById("send").disabled) {
+      handleSendButton();
+    }
+  }
+}
+
+// Handles a click on the Send button (or pressing return/enter) by
+// building a "message" object and sending it to the server.
+function handleSendButton() {
+  var msg = {
+    text: document.getElementById("text").value,
+    type: "message",
+    id: clientID,
+    name: myUsername,
+    date: Date.now()
+  };
+  sendToServer(msg);
+  document.getElementById("text").value = "";
+  var time = new Date(msg.date);
+  var timeStr = time.toLocaleTimeString();
+  var text =  '<span class="me-msg" style="color: #4169E1;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
+  if (text.length) {
+      updateChat(text);
+  }
 }
 
 function gotStream(stream) {
