@@ -382,7 +382,7 @@ function onIceCandidate(pc, event) {
 }
 
 function onAddIceCandidateSuccess(pc, event) {
-    trace("Outgoing ICE candidate: " + event.candidate.candidate);
+    trace("Outgoing ICE candidate: " + event.candidate);
     sendToServer({
       type: "new-ice-candidate",
       target: targetUsername,
