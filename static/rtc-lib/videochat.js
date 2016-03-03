@@ -38,19 +38,19 @@ var iceServers = [
   {
 	urls:'stun:202.153.34.169:8002?transport=tcp'
   },
+//  {
+//	urls:'stun:global.stun.twilio.com:3478?transport=udp'
+//  },
   {
-	urls:'stun:global.stun.twilio.com:3478?transport=udp'
-  },
-  {
-    urls: 'turn:202.153.34.169:8003?transport=tcp',
+    urls: 'turn:202.153.34.169:8002?transport=tcp',
     credential: 'dhanush123',
     username: 'dhanush'
   },
-  {
-    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-    credential: 'lN48+q3dzIvVFTIojLICy53W0lo9vujIoBcLExzS6pI=',
-    username: '70cfe39ec1b0922d41f49812f110383f31c7d0e861b27e40d58e5a1b453f4c01'
-  }
+//  {
+//    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+//    credential: 'lN48+q3dzIvVFTIojLICy53W0lo9vujIoBcLExzS6pI=',
+//    username: '70cfe39ec1b0922d41f49812f110383f31c7d0e861b27e40d58e5a1b453f4c01'
+//  }
   ];
 
 function getName(pc) {
@@ -196,6 +196,7 @@ function updateChat(text)
 
 function gotStream(stream) {
   trace('Received local stream');
+  localVideo.src = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
   localStream = stream;
   trace('done settng stream');
@@ -206,7 +207,9 @@ function start() {
   navigator.mediaDevices.getUserMedia(mediaConstraints)
   .then(function(stream) {
       gotStream(stream);
-      myPeerConnection = new RTCPeerConnection(iceServers);
+      myPeerConnection = new RTCPeerConnection({
+      iceServers: iceServers
+      });
       trace('Created local peer connection object myPeerConnection');
       myPeerConnection.onicecandidate = function(e) {
         onIceCandidate(myPeerConnection, e);
@@ -214,8 +217,7 @@ function start() {
       myPeerConnection.oniceconnectionstatechange = function(e) {
         onIceStateChange(myPeerConnection, e);
       };
-      myPeerConnection.addStream(localStream);
-      trace('Added local stream to myPeerConnection');
+
       myPeerConnection.onaddstream = gotRemoteStream;
   })
   .catch(function(e) {
@@ -238,6 +240,8 @@ function call() {
   trace('myPeerConnection createOffer start');
   myPeerConnection.createOffer(onCreateOfferSuccess, onCreateSessionDescriptionError,
       offerOptions);
+  myPeerConnection.addStream(localStream);
+  trace('Added local stream to myPeerConnection');
 }
 
 function onCreateSessionDescriptionError(error) {
@@ -273,6 +277,7 @@ function onSetSessionDescriptionError(error) {
 
 function gotRemoteStream(e) {
   remoteVideo.srcObject = e.stream;
+  remoteVideo.src = window.URL.createObjectURL(e.stream);
   trace('pc2 received remote stream');
 }
 
