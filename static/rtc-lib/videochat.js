@@ -369,22 +369,17 @@ function handleVideoAnswerMsg(msg) {
 
 function onIceCandidate(pc, event) {
   if (event.candidate) {
+    trace('sending ice candidate: ' + event.candidate);
     sendToServer({
       type: "new-ice-candidate",
       target: targetUsername,
       candidate: event.candidate
     });
-    trace(getName(pc) + ' ICE candidate: \n' + event.candidate.candidate);
+    trace(getName(pc) + ' ICE candidate: \n' + event.candidate);
   }
 }
 
-function onAddIceCandidateSuccess(pc, event) {
-    trace("Outgoing ICE candidate: " + event.candidate);
-    sendToServer({
-      type: "new-ice-candidate",
-      target: targetUsername,
-      candidate: event.candidate
-    });
+function onAddIceCandidateSuccess(pc) {
   trace(getName(pc) + ' addIceCandidate success');
 }
 
@@ -411,10 +406,15 @@ function handleHangUpMsg(msg) {
 
 function handleNewICECandidateMsg(msg) {
   var candidate = new RTCIceCandidate(msg.candidate);
-
   trace("Adding received ICE candidate: " + JSON.stringify(candidate));
-  myPeerConnection.addIceCandidate(candidate)
-    .catch(reportError);
+  myPeerConnection.addIceCandidate(candidate,
+        function() {
+          onAddIceCandidateSuccess(myPeerConnection);
+        },
+        function(err) {
+          onAddIceCandidateError(myPeerConnection, err);
+        }
+  );
 }
 
 

@@ -315,7 +315,7 @@ function handleRemoveStreamEvent(event) {
 
 function handleICECandidateEvent(event) {
   if (event.candidate) {
-    log("Outgoing ICE candidate: " + event.candidate.candidate);
+    log("Outgoing ICE candidate: " + event.candidate);
 
     sendToServer({
       type: "new-ice-candidate",
