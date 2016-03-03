@@ -39,19 +39,19 @@ var iceServers = [
   {
 	urls:'stun:202.153.34.169:8002?transport=tcp'
   },
-//  {
-//	urls:'stun:global.stun.twilio.com:3478?transport=udp'
-//  },
+  {
+	urls:'stun:global.stun.twilio.com:3478?transport=udp'
+  },
   {
     urls: 'turn:202.153.34.169:8002?transport=tcp',
     credential: 'dhanush123',
     username: 'dhanush'
   },
-//  {
-//    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-//    credential: 'lN48+q3dzIvVFTIojLICy53W0lo9vujIoBcLExzS6pI=',
-//    username: '70cfe39ec1b0922d41f49812f110383f31c7d0e861b27e40d58e5a1b453f4c01'
-//  }
+  {
+    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+    credential: 'lN48+q3dzIvVFTIojLICy53W0lo9vujIoBcLExzS6pI=',
+    username: '70cfe39ec1b0922d41f49812f110383f31c7d0e861b27e40d58e5a1b453f4c01'
+  }
   ];
 
 function getName(pc) {
@@ -250,6 +250,7 @@ function start() {
       myPeerConnection.oniceconnectionstatechange = function(e) {
         onIceStateChange(myPeerConnection, e);
       };
+      myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
 
       myPeerConnection.onaddstream = gotRemoteStream;
   })
@@ -270,11 +271,11 @@ function call() {
   if (audioTracks.length > 0) {
     trace('Using audio device: ' + audioTracks[0].label);
   }
+  trace('Adding remote stream to myPeerConnection');
+  myPeerConnection.addStream(localStream);
   trace('myPeerConnection createOffer start');
   myPeerConnection.createOffer(onCreateOfferSuccess, onCreateSessionDescriptionError,
       offerOptions);
-  myPeerConnection.addStream(localStream);
-  trace('Added local stream to myPeerConnection');
 }
 
 function onCreateSessionDescriptionError(error) {
@@ -294,6 +295,7 @@ function onCreateOfferSuccess(desc) {
         type: "video-offer",
         sdp: desc
       });
+
 }
 
 function onSetLocalSuccess(pc) {
@@ -331,7 +333,9 @@ function handleVideoOfferMsg(msg) {
   trace('recieved offer is ' + desc);
   myPeerConnection.setRemoteDescription(desc, function() {
     onSetRemoteSuccess(myPeerConnection);
-    trace('myPeerConnection createAnswer start');
+  myPeerConnection.addStream(localStream);
+  trace("added remote stream");
+  trace('myPeerConnection createAnswer start');
       // Since the 'remote' side has no media stream we need
       // to pass in the right constraints in order for it to
       // accept the incoming offer of audio and video.
@@ -356,7 +360,6 @@ function onCreateAnswerSuccess(desc) {
       type: "video-answer",
       sdp: desc
     });
-  myPeerConnection.addStream(localStream);
 }
 
 function handleVideoAnswerMsg(msg) {
@@ -417,10 +420,25 @@ function handleNewICECandidateMsg(msg) {
   );
 }
 
+// Handle |iceconnectionstatechange| events. This will detect
+// when the ICE connection is closed, failed, or disconnected.
+//
+// Note that currently, the spec is hazy on exactly when this and other
+// "connection failure" scenarios should occur, so sometimes they simply
+// don't happen.
 
-function reportError(errMessage) {
-  trace("Error " + errMessage.name + ": " + errMessage.message);
+function handleICEConnectionStateChangeEvent(event) {
+  trace("*** ICE connection state changed to " + myPeerConnection.iceConnectionState);
+
+//  switch(myPeerConnection.iceConnectionState) {
+//    case "closed":
+//    case "failed":
+//    case "disconnected":
+//      closeVideoCall();
+//      break;
+//  }
 }
+
 
 // Hang up the call by closing our end of the connection, then
 // sending a "hang-up" message to the other peer (keep in mind that
