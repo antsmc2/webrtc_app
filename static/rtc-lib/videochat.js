@@ -338,7 +338,7 @@ function onIceCandidate(pc, event) {
   if (event.candidate) {
     myPeerConnection.addIceCandidate(new RTCIceCandidate(event.candidate),
         function() {
-          onAddIceCandidateSuccess(pc);
+          onAddIceCandidateSuccess(pc,event);
         },
         function(err) {
           onAddIceCandidateError(pc, err);
@@ -348,7 +348,13 @@ function onIceCandidate(pc, event) {
   }
 }
 
-function onAddIceCandidateSuccess(pc) {
+function onAddIceCandidateSuccess(pc, event) {
+    trace("Outgoing ICE candidate: " + event.candidate.candidate);
+    sendToServer({
+      type: "new-ice-candidate",
+      target: targetUsername,
+      candidate: event.candidate
+    });
   trace(getName(pc) + ' addIceCandidate success');
 }
 
@@ -367,6 +373,23 @@ function handleHangUpMsg(msg) {
   trace("*** Received hang up notification from other peer");
 
   closeVideoCall();
+}
+
+// A new ICE candidate has been received from the other peer. Call
+// RTCPeerConnection.addIceCandidate() to send it along to the
+// local ICE framework.
+
+function handleNewICECandidateMsg(msg) {
+  var candidate = new RTCIceCandidate(msg.candidate);
+
+  trace("Adding received ICE candidate: " + JSON.stringify(candidate));
+  myPeerConnection.addIceCandidate(candidate)
+    .catch(reportError);
+}
+
+
+function reportError(errMessage) {
+  trace("Error " + errMessage.name + ": " + errMessage.message);
 }
 
 // Hang up the call by closing our end of the connection, then
