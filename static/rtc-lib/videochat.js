@@ -24,6 +24,8 @@ var startTime = null;
 
 
 var localStream;
+var localDesc = null;
+var remoteDesc = null;
 var pc1;
 var pc2;
 var offerOptions = {
@@ -66,8 +68,8 @@ function sendToServer(msg) {
   connection.send(msgJSON);
 }
 
-function broadcastNew(username, notify_peer) {
-  if(notify_peer)
+function broadcastNew(username) {
+
     sendToServer({
       name: myUsername,
       date: Date.now(),
@@ -94,7 +96,7 @@ function connect(path, username, peer_id, notify_peer) {
   connection = new WebSocket(serverUrl);
 
   connection.onopen = function(event) {
-    broadcastNew(username, notify_peer);
+    start();
     trace('connection opened.');
   };
 
@@ -122,10 +124,8 @@ function connect(path, username, peer_id, notify_peer) {
         text = '<span class="you-msg" style="color: #483D8B;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
         break;
 
-      case "rejectusername":
-        myUsername = msg.name;
-        text = "<b>Your username has been set to <em>" + myUsername +
-          "</em> because the name you chose is in use.</b><br>";
+      case "add-stream":  //invitation to add stream
+        handleAddStreamMsg(msg);
         break;
 
       // Signaling messages: these messages are used to trade WebRTC
@@ -232,7 +232,7 @@ function gotStream(stream) {
   localVideo.src = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
   localStream = stream;
-  trace('done settng stream');
+  trace('done setting stream');
 }
 
 function start() {
@@ -253,6 +253,7 @@ function start() {
       myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
 
       myPeerConnection.onaddstream = gotRemoteStream;
+      broadcastNew(myUsername);
   })
   .catch(function(e) {
     alert('getUserMedia() error: ' + e.name);
@@ -274,8 +275,13 @@ function call() {
   trace('Adding remote stream to myPeerConnection');
   myPeerConnection.addStream(localStream);
   trace('myPeerConnection createOffer start');
-  myPeerConnection.createOffer(onCreateOfferSuccess, onCreateSessionDescriptionError,
-      offerOptions);
+  myPeerConnection.createOffer(offerOptions)
+    .then(function(desc){
+        onCreateOfferSuccess(desc);
+    })
+    .catch(function(error) {
+        onCreateSessionDescriptionError(error);
+    });
 }
 
 function onCreateSessionDescriptionError(error) {
@@ -284,18 +290,23 @@ function onCreateSessionDescriptionError(error) {
 
 
 function onCreateOfferSuccess(desc) {
+  localDesc = desc;
   trace('Offer from myPeerConnection\n' + desc.sdp);
   trace('pc1 setLocalDescription start');
-  myPeerConnection.setLocalDescription(desc, function() {
+  myPeerConnection.setLocalDescription(desc)
+  .then(function() {
     onSetLocalSuccess(myPeerConnection);
-  }, onSetSessionDescriptionError);
-  sendToServer({
+    trace("Sending offer packet back to other peer");
+    sendToServer({
         name: myUsername,
         target: targetUsername,
         type: "video-offer",
         sdp: desc
       });
-
+  })
+  .catch(function(error) {
+    onSetSessionDescriptionError(error);
+    });
 }
 
 function onSetLocalSuccess(pc) {
@@ -332,47 +343,71 @@ function handleVideoOfferMsg(msg) {
     trace('Using audio device: ' + audioTracks[0].label);
   }
   trace('recieved offer is ' + desc);
-  myPeerConnection.setRemoteDescription(desc, function() {
+  myPeerConnection.setRemoteDescription(desc)
+    .then(function() {
     onSetRemoteSuccess(myPeerConnection);
-  myPeerConnection.addStream(localStream);
-  trace("added remote stream");
-  trace('myPeerConnection createAnswer start');
+    remoteDesc = desc;
+    trace('Adding remote stream to myPeerConnection');
+    myPeerConnection.addStream(localStream);
+    trace('myPeerConnection createAnswer start');
       // Since the 'remote' side has no media stream we need
       // to pass in the right constraints in order for it to
       // accept the incoming offer of audio and video.
     myPeerConnection.createAnswer(onCreateAnswerSuccess, onCreateSessionDescriptionError);
-  }, onSetSessionDescriptionError);
+  })
+  .catch(function(error) {
+    onSetSessionDescriptionError(error);
+  });
 
 }
 
 function onCreateAnswerSuccess(desc) {
+  localDesc = desc;
   trace('Answer from myPeerConnection:\n' + desc.sdp);
   trace('myPeerConnection setLocalDescription start');
-  myPeerConnection.setLocalDescription(desc, function() {
-    onSetLocalSuccess(myPeerConnection);
-  }, onSetSessionDescriptionError);
+  myPeerConnection.setLocalDescription(desc)
+    .then( function() {
+      onSetLocalSuccess(myPeerConnection);
+      trace("Sending answer packet back to other peer");
+      sendToServer({
+          name: myUsername,
+          target: targetUsername,
+          type: "video-answer",
+          sdp: desc
+        });
+  })
+   .catch(
+   function(error) {
+        onSetSessionDescriptionError(error);
+   });
   // We've configured our end of the call now. Time to send our
   // answer back to the caller so they know that we want to talk
   // and how to talk to us.
-  trace("Sending answer packet back to other peer");
-  sendToServer({
-      name: myUsername,
-      target: targetUsername,
-      type: "video-answer",
-      sdp: desc
-    });
+
 }
 
 function handleVideoAnswerMsg(msg) {
   var desc = new RTCSessionDescription(msg.sdp);
   trace('myPeerConnection setRemoteDescription start');
-  myPeerConnection.setRemoteDescription(desc, function() {
+  myPeerConnection.setRemoteDescription(desc)
+   .then(function() {
+    remoteDesc = desc;
     onSetRemoteSuccess(myPeerConnection);
-  }, onSetSessionDescriptionError);
+  })
+  .catch(function(error) {
+    onSetSessionDescriptionError(error);
+  });
+}
+
+function handleAddStreamMsg(msg) {
+  trace('got request to add share stream with remote');
+  trace('Adding remote stream to myPeerConnection');
+  myPeerConnection.addStream(localStream);
 }
 
 function onIceCandidate(pc, event) {
   if (event.candidate) {
+    myPeerConnection.onicecandidate = function(){};
     trace('sending ice candidate: ' + event.candidate);
     sendToServer({
       type: "new-ice-candidate",
@@ -411,14 +446,16 @@ function handleHangUpMsg(msg) {
 function handleNewICECandidateMsg(msg) {
   var candidate = new RTCIceCandidate(msg.candidate);
   trace("Adding received ICE candidate: " + JSON.stringify(candidate));
-  myPeerConnection.addIceCandidate(candidate,
+  myPeerConnection.addIceCandidate(candidate)
+    .then(
         function() {
           onAddIceCandidateSuccess(myPeerConnection);
-        },
+        })
+    .catch(
         function(err) {
           onAddIceCandidateError(myPeerConnection, err);
-        }
-  );
+        });
+
 }
 
 // Handle |iceconnectionstatechange| events. This will detect

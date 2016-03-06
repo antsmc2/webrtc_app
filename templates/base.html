@@ -15,7 +15,7 @@
       <div class="flexChild" id="camera-container">
         <div class="camera-box">
           <video id="received_video" autoplay="true"></video>
-          <video id="local_video" autoplay="true" muted="true"></video>
+          <video id="local_video" autoplay="true" muted="muted"></video>
           <button id="hangup-button" onclick="hangUpCall();" disabled="disabled">
             Hang Up
           </button>
@@ -40,7 +40,7 @@
   </div>
 	<script type="text/javascript">
 		(function() {
-		    start();
+
 		    {% if title == 'Caller' %}
 			    connect('{% raw caller_ws_uri %}', '{{my_id}}', '{{peer_id}}', false);
 			{%else%}
