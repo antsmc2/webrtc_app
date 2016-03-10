@@ -100,10 +100,6 @@ function connect(path, username, peer_id, notify_peer) {
     trace('connection opened.');
   };
 
-  connection.onclose = function() {
-    trace('connection closed');
-  }
-
   connection.onmessage = function(evt) {
     if (document.getElementById("send").disabled) {
       document.getElementById("text").disabled = false;
@@ -411,7 +407,7 @@ function handleAddStreamMsg(msg) {
 
 function onIceCandidate(pc, event) {
   if (event.candidate) {
-    myPeerConnection.onicecandidate = function(){};
+//    myPeerConnection.onicecandidate = function(){};
     trace('sending ice candidate: ' + event.candidate);
     sendToServer({
       type: "new-ice-candidate",
