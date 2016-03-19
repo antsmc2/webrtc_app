@@ -6,7 +6,9 @@ import json
 import logging
 from daemon import Daemon
 from urllib import urlencode, quote
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+import threading
+
 
 APP_PORT = 8004
 WS_PROTOCOL = 'wss'
@@ -17,14 +19,12 @@ LOG_FILE = os.path.join(SCRIPT_DIR, 'webrtc.log')
 PID_FILE = os.path.join(SCRIPT_DIR, 'webrtc.pid')
 
 
-CALL_INIT = 'INI'
-CALL_ONGOING = 'IN_PROG'
-CALL_DROPPED = 'DROPPED'
-LOGIN_TYPE = 'LOGIN'
-CALL_TYPE = 'CALL'
-PEER_UNAVAILABLE = 'Peer Unavailable'
-PEER_BUSY = 'Peer Busy'
-PEER_NOT_FOUND = 'Recepient not found'
+SERVER_NOTICE_TYPE = 'SERVER_NOTICE'
+PEER_UNAVAILABLE = 'PEER-UNAVAILABLE'
+PEER_BUSY = 'PEER-BUSY'
+PEER_NOT_FOUND = 'PEER-NOT-FOUND'
+BAD_REQUEST = 'BAD-REQUEST'
+BAD_REQUEST_STATUS = 400
 
 sys.path.append(SCRIPT_DIR)
 handler = logging.FileHandler(LOG_FILE)
@@ -32,18 +32,38 @@ formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s')
 handler.setFormatter(formatter)
 logger = logging.getLogger("tornado.application")
 logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
+#ice servers
+iceServers = [
+  {
+    'urls': 'stun:stun.l.google.com:19302',
+  },
+  {
+	'urls':'stun:202.153.34.169:8002?transport=tcp'
+  },
+  {
+	'urls':'stun:global.stun.twilio.com:3478?transport=udp'
+  },
+  {
+    'urls' : 'turn:202.153.34.169:8002?transport=tcp',
+    'credential': 'dhanush123',
+    'username': 'dhanush'
+  },
+  {
+    'urls': 'turn:global.turn.twilio.com:3478?transport=udp',
+    'credential': 'lN48+q3dzIvVFTIojLICy53W0lo9vujIoBcLExzS6pI=',
+    'username': '70cfe39ec1b0922d41f49812f110383f31c7d0e861b27e40d58e5a1b453f4c01'
+  }
+  ];
 
 #in the future these values would be put in cache maybe
-peers = {}
-clients = {}
+clients = defaultdict(set)
 
-def get_notice_msg(caller_id, msg_type, status):
+def get_notice_msg(msg, msg_type=SERVER_NOTICE_TYPE):
     data = {
-     'caller' : caller_id,
      'msg_type' : msg_type,
-     'status': status
+     'message': msg
      }
     return json.dumps(data)
 
@@ -56,22 +76,25 @@ def make_relative_url(path, **kwargs):
     query_string =  urlencode(OrderedDict(kwargs))
     return '%s?%s' % (path, query_string)
 
-class CallTemplateHandler(web.RequestHandler):
+class ICEServerHandler(web.RequestHandler):
+
+    def post(self, *args, **kwargs):
+        self.add_header('Content-Type', 'application/json')
+        self.write(json.dumps(iceServers))
+
+
+class BaseTemplateHandler(web.RequestHandler):
+    ws_url_name = None
+    title = None
 
     def process_request(self, *args, **kwargs):
         peer_id = self.get_query_argument('peer_id', None) or self.get_argument('peer_id', None)
         id = self.get_query_argument('id', None) or self.get_argument('id', None)
-        if clients.has_key(peer_id) is False:
-            logger.debug('peer unavailable: %s' % peer_id)
-            self.set_status(404, reason=PEER_UNAVAILABLE)
-            return self.write(PEER_UNAVAILABLE)
-        logger.debug('client call status %s: %s' % (peer_id, clients[peer_id].call_status))
-        if clients[peer_id].call_status == LoginHandler.BUSY:
-            self.set_status(423, reason=PEER_BUSY)
-            return self.write(PEER_BUSY)
-        caller_ws_uri = make_relative_url(app.reverse_url('caller_ws'), id=id, peer_id=peer_id)
+        ws_uri = make_relative_url(app.reverse_url(self.ws_url_name), id=id, peer_id=peer_id)
+        ice_url = make_relative_url(app.reverse_url('ice_url'))
+        logger.debug('using ice servers: %s' % ice_url)
         self.render(os.path.join(TEMPLATE_DIR, "base.html"),
-                    caller_ws_uri=caller_ws_uri, my_id=id, peer_id=peer_id, title='Caller')
+                    ws_uri=ws_uri, my_id=id, peer_id=peer_id, title=self.title, ice_url=ice_url)
 
     def get(self, *args, **kwargs):
         self.process_request(*args, **kwargs)
@@ -79,19 +102,14 @@ class CallTemplateHandler(web.RequestHandler):
     def post(self, *args, **kwargs):
         self.process_request(*args, **kwargs)
 
-class RecieveTemplateHandler(web.RequestHandler):
-    def process_request(self, *args, **kwargs):
-        peer_id = self.get_query_argument('peer_id', None) or self.get_argument('peer_id', None)
-        id = self.get_query_argument('id', None) or self.get_argument('id', None)
-        recieve_ws_uri = make_relative_url(app.reverse_url('reciever_ws'), id=id, peer_id=peer_id)
-        self.render(os.path.join(TEMPLATE_DIR, "base.html"), recieve_ws_uri=recieve_ws_uri,
-                    my_id=id, peer_id=peer_id, title='Receiver')
 
-    def get(self, *args, **kwargs):
-        self.process_request(*args, **kwargs)
+class CallTemplateHandler(BaseTemplateHandler):
+    ws_url_name = 'caller_ws'
+    title = 'Caller'
 
-    def post(self, *args, **kwargs):
-        self.process_request(*args, **kwargs)
+class RecieveTemplateHandler(BaseTemplateHandler):
+    ws_url_name = 'reciever_ws'
+    title = 'Receiver'
 
 class BaseHandler(websocket.WebSocketHandler):
     id = None
@@ -101,7 +119,7 @@ class BaseHandler(websocket.WebSocketHandler):
         return True
 
     def on_connection_close(self):
-        logger.info('lost remote "%s"' % self.id)
+        logger.info('lost connection "%s"' % self.id)
         self.closed = True
         self.clean()
         super(BaseHandler, self).on_connection_close()
@@ -121,76 +139,57 @@ class WebRTCHandler(BaseHandler):
         self.peer_id = self.get_query_argument('peer_id', None)
         logger.info('new id: %s, peer: %s' % (self.id, self.peer_id))
         if self.id and self.id is not self.peer_id:
-            if peers.has_key(self.id) is False:
-                peers[self.id] = self
-            else:
-                self.close(code=423, reason=PEER_BUSY)
+            lock = threading.Lock()
+            with lock:
+                clients[self.id].add(self)
         else:
-            self.close(code=404, reason=PEER_NOT_FOUND)
-        logger.debug('peers: %s, closed: %s' % (len(peers), self.closed))
+            self.close(BAD_REQUEST_STATUS, BAD_REQUEST)
+        logger.debug('clients: %s, closed: %s' % (len(clients), self.closed))
     
     def on_message(self, message):
         logger.debug('from: %s, to: %s, msg: %s' % (self.id, self.peer_id, message))
-        if peers.has_key(self.peer_id):
-            peers[self.peer_id].write_message(message)
+        sent = False
+        if clients.has_key(self.peer_id):
+            peer_clients = clients[self.peer_id]
+            for client in peer_clients:
+                if client.peer_id == self.id:   ###send message only to relevant peer
+                    try:
+                        client.write_message(message)
+                        sent = True
+                    except Exception, ex:
+                        logger.error('error sending from: %s, To: %s' % (self.id, self.peer_id))
+        if not sent:
+            my_clients = clients[self.id]
+            message = get_notice_msg(PEER_UNAVAILABLE)
+            for client in my_clients:
+                if client.id == self.peer_id:       ##only notify on relevant conversation
+                    try:
+                        client.write_message(message) #just try to notify if you can
+                    except:
+                        pass
 
     def clean(self):
         logger.debug('cleaning.. %s' % self.id)
-        if peers.has_key(self.id):
-            peers.pop(self.id)
-        if peers.has_key(self.peer_id) and peers[self.peer_id].closed is False:
-            peer = peers[self.peer_id]
-            logger.info('closing peer %s' % self.peer_id)
-            peer.clean()
-            peer.close(code=404, reason=PEER_UNAVAILABLE)
-        if clients.has_key(self.peer_id) and clients[self.peer_id].closed is False:
-            clients[self.peer_id].write_message(get_notice_msg(self.id, CALL_TYPE, CALL_DROPPED))
-        logger.debug('closed: %s. total peers: %s' % (self.id, len(peers)))
+        lock = threading.Lock()
+        with lock:
+            clients[self.id].remove(self)
+            if not clients[self.id]:
+                clients.pop(self.id)
+        logger.debug('closed: %s. total clients: %s' % (self.id, len(clients)))
 
 class CallHandler(WebRTCHandler):
-    
-    def open(self):
-        super(CallHandler, self).open()
-        if self.closed is False:
-            if clients.has_key(self.peer_id) is False:
-                return self.close(code=404, reason=PEER_UNAVAILABLE)
-            clients[self.peer_id].write_message(get_notice_msg(self.id, CALL_TYPE, CALL_INIT))
+    pass
             
 class RecieveHandler(WebRTCHandler):
     pass
 
-class LoginHandler(BaseHandler):
-    BUSY = 0
-    AVAILABLE = 1
-    call_status = AVAILABLE
-
-    def open(self):
-        self.id = self.get_query_argument('id', None)
-        logger.info('login request for: %s' % self.id)
-        if self.id and clients.has_key(id) is False:
-            clients[self.id] = self
-            self.call_status = LoginHandler.AVAILABLE
-
-    def write_message(self, message, binary=False):
-        msg = json.loads(message)
-        if msg.has_key('msg_type') and msg['msg_type'] == CALL_TYPE and msg['status'] == CALL_INIT:
-            self.call_status = LoginHandler.BUSY
-        if msg.has_key('msg_type') and msg['msg_type'] == CALL_TYPE and msg['status'] == CALL_DROPPED:
-            self.call_status = LoginHandler.AVAILABLE
-        return super(LoginHandler, self).write_message(message, binary)
-
-    def on_close(self):
-        if clients.has_key(self.id):
-            clients.pop(self.id)
-        logger.info('logout: %s' % self.id)
-
 app = web.Application([
     web.URLSpec(r'/wscall', CallHandler, name='caller_ws'),
     web.URLSpec(r'/wsrecieve', RecieveHandler, name='reciever_ws'),
-    web.URLSpec(r'/wslogin', LoginHandler, name='login_ws'),
     (r'/static/(.*)', web.StaticFileHandler, {'path': STATIC_DIR}),
     web.URLSpec(r'/call', CallTemplateHandler, name='caller_page'),
     web.URLSpec(r'/recieve', RecieveTemplateHandler, name='reciever_page'),
+    web.URLSpec(r'/ice_servers', ICEServerHandler, name='ice_url'),
 ])
 
 

@@ -40,12 +40,7 @@
   </div>
 	<script type="text/javascript">
 		(function() {
-
-		    {% if title == 'Caller' %}
-			    connect('{% raw caller_ws_uri %}', '{{my_id}}', '{{peer_id}}', false);
-			{%else%}
-			    connect('{% raw recieve_ws_uri %}', '{{my_id}}', '{{peer_id}}', true);
-			{% end %}
+		    connect('{% raw ws_uri %}', '{{my_id}}', '{{peer_id}}', '{{ice_url}}');
 			var w = window.innerWidth
                 || document.documentElement.clientWidth
                 || document.body.clientWidth;

@@ -34,27 +34,7 @@ var offerOptions = {
 };
 
 
-var iceServers = [
-  {
-    urls: 'stun:stun.l.google.com:19302',
-  },
-  {
-	urls:'stun:202.153.34.169:8002?transport=tcp'
-  },
-  {
-	urls:'stun:global.stun.twilio.com:3478?transport=udp'
-  },
-  {
-    urls: 'turn:202.153.34.169:8002?transport=tcp',
-    credential: 'dhanush123',
-    username: 'dhanush'
-  },
-  {
-    urls: 'turn:global.turn.twilio.com:3478?transport=udp',
-    credential: 'lN48+q3dzIvVFTIojLICy53W0lo9vujIoBcLExzS6pI=',
-    username: '70cfe39ec1b0922d41f49812f110383f31c7d0e861b27e40d58e5a1b453f4c01'
-  }
-  ];
+var iceServers = null;
 
 function getName(pc) {
   return (pc === myPeerConnection) ? myUsername : targetUsername;
@@ -77,7 +57,7 @@ function broadcastNew(username) {
     });
 }
 
-function connect(path, username, peer_id, notify_peer) {
+function connect(path, username, peer_id, ice_url) {
   myUsername = username;
   targetUsername = peer_id;
   clientID = myUsername;
@@ -85,8 +65,8 @@ function connect(path, username, peer_id, notify_peer) {
 
   // If this is an HTTPS connection, we have to use a secure WebSocket
   // connection too, so add another "s" to the scheme.
-
-  if (document.location.protocol === "https:") {
+  var req_protocol = document.location.protocol;
+  if (req_protocol === "https:") {
       scheme += "s";
   }
   var serverUrl = scheme + "://" + myHostname + ':' + myPort + path;
@@ -96,6 +76,15 @@ function connect(path, username, peer_id, notify_peer) {
   connection = new WebSocket(serverUrl);
 
   connection.onopen = function(event) {
+    //get ice servers
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+       if (xhttp.readyState == 4 && xhttp.status == 200) {
+          iceServers = JSON.parse(xhttp.responseText);
+       }
+    }
+    xhttp.open("POST", ice_url , false);
+    xhttp.send();
     start();
     trace('connection opened.');
   };
@@ -468,13 +457,16 @@ function handleNewICECandidateMsg(msg) {
 function handleICEConnectionStateChangeEvent(event) {
   trace("*** ICE connection state changed to " + myPeerConnection.iceConnectionState);
 
-//  switch(myPeerConnection.iceConnectionState) {
+  switch(myPeerConnection.iceConnectionState) {
 //    case "closed":
 //    case "failed":
 //    case "disconnected":
 //      closeVideoCall();
 //      break;
-//  }
+      case "connected":
+          myPeerConnection.oniceconnectionstatechange = null;
+          break;
+  }
 }
 
 
