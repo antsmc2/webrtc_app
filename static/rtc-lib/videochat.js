@@ -2,7 +2,7 @@
 "use strict";
 
 var myHostname = window.location.hostname;
-var myPort = window.location.port
+var myPort = window.location.port;
 console.log("Hostname: " + myHostname);
 
 //using websockets
@@ -15,7 +15,12 @@ var mediaConstraints = {
 
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
+var meColor = '#4169E1';
+var youColor = '#483D8B';
+var systemMessageColor = '#498888';
 var myPeerConnection = null;    // RTCPeerConnection
+var dataChannel = null;
+var dataChannelID = null;
 var clientID = 0;
 
 var remoteVideo = null;
@@ -33,6 +38,12 @@ var offerOptions = {
   offerToReceiveVideo: 1
 };
 
+//var dataChannelOptions = {
+//  ordered: false, // don not guarantee order
+//  maxRetransmitTime: 2000, // in milliseconds
+//};
+
+var dataChannelOptions = null; //use browser defaults
 
 var iceServers = null;
 
@@ -48,7 +59,7 @@ function sendToServer(msg) {
   connection.send(msgJSON);
 }
 
-function broadcastNew(username) {
+function broadcastPresence(username) {
 
     sendToServer({
       name: myUsername,
@@ -57,7 +68,7 @@ function broadcastNew(username) {
     });
 }
 
-function connect(path, username, peer_id, ice_url) {
+function connect(path, username, peer_id, ice_url, ice_pass) {
   myUsername = username;
   targetUsername = peer_id;
   clientID = myUsername;
@@ -81,19 +92,21 @@ function connect(path, username, peer_id, ice_url) {
     xhttp.onreadystatechange = function() {
        if (xhttp.readyState == 4 && xhttp.status == 200) {
           iceServers = JSON.parse(xhttp.responseText);
+          start();
        }
     }
-    xhttp.open("POST", ice_url , false);
-    xhttp.send();
-    start();
+    xhttp.open("POST", ice_url);
+    xhttp.send(ice_pass);
     trace('connection opened.');
   };
 
+
+
   connection.onmessage = function(evt) {
-    if (document.getElementById("send").disabled) {
-      document.getElementById("text").disabled = false;
-      document.getElementById("send").disabled = false;
-    }
+//    if (document.getElementById("send").disabled) {
+//      document.getElementById("text").disabled = false;
+//      document.getElementById("send").disabled = false;
+//    }
     var text = "";
     var msg = JSON.parse(evt.data);
     trace("Message received: ");
@@ -104,13 +117,11 @@ function connect(path, username, peer_id, ice_url) {
     switch(msg.type) {
 
       case "username":
-        text = "<b>User <em>" + msg.name + "</em> signed in at " + timeStr + "</b><br>";
-        document.getElementById("welcome").innerHTML = '';
         call(msg.name);
         break;
 
       case "message":
-        text = '<span class="you-msg" style="color: #483D8B;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
+        updateChat(msg);
         break;
 
       case "add-stream":  //invitation to add stream
@@ -137,20 +148,17 @@ function connect(path, username, peer_id, ice_url) {
         handleHangUpMsg(msg);
         break;
 
+       case "restart-call":
+          closeVideoCall();
+          start();
+          break;
+
       // Unknown message; output to console for debugging.
 
       default:
-        log_error("Unknown message received:");
-        log_error(msg);
+        trace("Error: Unknown message received: " + msg);
     }
 
-    // If there's text to insert into the chat buffer, do so now, then
-    // scroll the chat panel so that the new text is visible.
-
-    if (text.length) {
-      updateChat(text);
-//      document.getElementById("chatbox").contentWindow.scrollByPages(1);
-    }
   };
 
     remoteVideo = document.getElementById("received_video");
@@ -168,6 +176,7 @@ function connect(path, username, peer_id, ice_url) {
     remoteVideo.onresize = function() {
       trace('Remote video size changed to ' +
         remoteVideo.videoWidth + 'x' + remoteVideo.videoHeight);
+      //****To do******
       // We'll use the first onsize callback as an indication that video has started
       // playing out.
       if (startTime) {
@@ -179,10 +188,43 @@ function connect(path, username, peer_id, ice_url) {
 
 }
 
-function updateChat(text)
+function enableChat() {
+    document.getElementById("text").disabled = false;
+    document.getElementById("send").disabled = false;
+}
+
+function disableChat() {
+    document.getElementById("text").disabled = true;
+    document.getElementById("send").disabled = true;
+}
+
+function updateChat(msg)
 {
+  if(!(msg.text && msg.text.trim()))
+    return;
+  var date = Date.now();
+  if(msg.date)
+    date = msg.date;
+  var time = new Date(date);
+  var timeStr = time.toLocaleTimeString();
+  var color = systemMessageColor;
+  var name = msg.name ? msg.name : '';
+  switch(msg.name){
+    case myUsername:
+      color = meColor;
+      break;
+    case targetUsername:
+      color = youColor;
+      break;
+  }
+  var text = '<span class="you-msg" style="color: ' + color + ';">(' + timeStr + ") <b>" + name + "</b>: " + msg.text + "<br></span>";
   var chatPane = document.getElementById("chatbox");
   chatPane.innerHTML = chatPane.innerHTML + '<p class="chat">' + text + '</p>';
+}
+
+function resetChat() {
+  var chatPane = document.getElementById("chatbox");
+  chatPane.innerHTML = '';
 }
 
 // Handler for keyboard events. This is used to intercept the return and
@@ -206,13 +248,17 @@ function handleSendButton() {
     name: myUsername,
     date: Date.now()
   };
-  sendToServer(msg);
   document.getElementById("text").value = "";
   var time = new Date(msg.date);
   var timeStr = time.toLocaleTimeString();
-  var text =  '<span class="me-msg" style="color: #4169E1;">(' + timeStr + ") <b>" + msg.name + "</b>: " + msg.text + "<br></span>";
-  if (text.length) {
-      updateChat(text);
+  if (msg.text.length) {
+      try {
+        dataChannel.send(JSON.stringify(msg));
+      }catch(e) {
+          trace('Error sending msg: ' + e);
+          sendToServer(msg);
+      }
+      updateChat(msg);
   }
 }
 
@@ -224,7 +270,47 @@ function gotStream(stream) {
   trace('done setting stream');
 }
 
+function setUpDataChannel() {
+  trace('setting up data channel');
+
+  dataChannelID = dataChannel.id;
+
+  dataChannel.onerror = function (error) {
+    trace("Data Channel Error:" + error);
+  };
+
+  dataChannel.onmessage = onReceiveDataChannelMessage;
+
+  dataChannel.onopen = function () {
+    trace('Send channel state is: ' + dataChannel.readyState);
+    resetChat();
+    updateChat({text: 'Connected to ' + targetUsername});
+    enableChat();
+  };
+
+  dataChannel.onclose = function () {
+    trace("The Data Channel is Closed");
+    disableChat();
+  };
+  trace('done setting up channel');
+}
+
+function onReceiveDataChannelMessage (event) {
+    trace("Got Data Channel Message:" + event.data);
+    var msg = JSON.parse(event.data);
+    if(msg.type == 'message')
+      updateChat(msg);
+  };
+
+function receiveDataChannel(event) {
+        trace('recieved data channel');
+        dataChannel = event.channel;
+        setUpDataChannel();
+}
+
+
 function start() {
+  document.getElementById("restart-call-button").disabled = true;
   trace('Requesting local stream');
   navigator.mediaDevices.getUserMedia(mediaConstraints)
   .then(function(stream) {
@@ -236,13 +322,9 @@ function start() {
       myPeerConnection.onicecandidate = function(e) {
         onIceCandidate(myPeerConnection, e);
       };
-      myPeerConnection.oniceconnectionstatechange = function(e) {
-        onIceStateChange(myPeerConnection, e);
-      };
       myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
-
       myPeerConnection.onaddstream = gotRemoteStream;
-      broadcastNew(myUsername);
+      broadcastPresence(myUsername);
   })
   .catch(function(e) {
     alert('getUserMedia() error: ' + e.name);
@@ -252,6 +334,9 @@ function start() {
 function call() {
 //  hangupButton.disabled = false;
   trace('Starting call');
+  trace('creating data channel');
+  dataChannel = myPeerConnection.createDataChannel("chat", dataChannelOptions);
+  setUpDataChannel();
   startTime = window.performance.now();
   var videoTracks = localStream.getVideoTracks();
   var audioTracks = localStream.getAudioTracks();
@@ -320,6 +405,7 @@ function gotRemoteStream(e) {
 
 function handleVideoOfferMsg(msg) {
   //hangupButton.disabled = false;
+  myPeerConnection.ondatachannel = receiveDataChannel; //register to use callers datachannel
   var desc = new RTCSessionDescription(msg.sdp);
   trace('Accepting call');
   startTime = window.performance.now();
@@ -415,16 +501,8 @@ function onAddIceCandidateError(pc, error) {
   trace(getName(pc) + ' failed to add ICE Candidate: ' + error.toString());
 }
 
-function onIceStateChange(pc, event) {
-  if (pc) {
-    trace(getName(pc) + ' ICE state: ' + pc.iceConnectionState);
-    console.log('ICE state change event: ', event);
-  }
-}
-
 function handleHangUpMsg(msg) {
   trace("*** Received hang up notification from other peer");
-
   closeVideoCall();
 }
 
@@ -464,7 +542,7 @@ function handleICEConnectionStateChangeEvent(event) {
 //      closeVideoCall();
 //      break;
       case "connected":
-          myPeerConnection.oniceconnectionstatechange = null;
+          myPeerConnection.oniceconnectionstatechange = null; //stop exchanging ice if it is completed.
           break;
   }
 }
@@ -485,11 +563,21 @@ function hangUpCall() {
   });
 }
 
+//restart the call
+function restartCall() {
+  closeVideoCall();
+  start();
+  sendToServer({
+    name: myUsername,
+    target: targetUsername,
+    type: "restart-call"
+  });
+}
+
 
 function closeVideoCall() {
 
   trace("Closing the call");
-
   // Close the RTCPeerConnection
 
   if (myPeerConnection) {
@@ -508,15 +596,24 @@ function closeVideoCall() {
     remoteVideo.src = null;
     localVideo.src = null;
 
-    // Close the peer connection
+    if(dataChannelID == dataChannel.id)
+      dataChannel.close();
+    //disable listeners
+    myPeerConnection.onicecandidate = null;
+    myPeerConnection.oniceconnectionstatechange = null;
+    myPeerConnection.ondatachannel = null;
 
+    myPeerConnection.onaddstream = null;
+    // Close the peer connection
     myPeerConnection.close();
     myPeerConnection = null;
+    dataChannel = null;
   }
 
   // Disable the hangup button
 
+  document.getElementById("restart-call-button").disabled = false;
   document.getElementById("hangup-button").disabled = true;
-
+  disableChat();
   targetUsername = null;
 }

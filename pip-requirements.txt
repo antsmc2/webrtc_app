@@ -1,3 +1,4 @@
 tornado==4.3
 websocket-client==0.34.0
 coverage
+supervisor

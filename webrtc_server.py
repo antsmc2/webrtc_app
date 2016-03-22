@@ -4,14 +4,13 @@ from tornado import websocket, web, ioloop
 import os, sys
 import json
 import logging
-from daemon import Daemon
 from urllib import urlencode, quote
 from collections import OrderedDict, defaultdict
 import threading
 
 
 APP_PORT = 8004
-WS_PROTOCOL = 'wss'
+WS_PROTOCOL = 'ws'
 SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 TEMPLATE_DIR = os.path.join(SCRIPT_DIR, 'templates')
 STATIC_DIR = os.path.join(SCRIPT_DIR, 'static')
@@ -34,6 +33,8 @@ logger = logging.getLogger("tornado.application")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
+ICE_URL = r'/ice_servers'
+ICE_ACCESS_TOKEN = '7af52166dadf6e1e3d46100fe272f85e'
 #ice servers
 iceServers = [
   {
@@ -57,8 +58,17 @@ iceServers = [
   }
   ];
 
+
+def has_ice_pass(request_handler):
+    access_token = request_handler.request.body
+    logger.debug('got token %s' % access_token)
+    return access_token == ICE_ACCESS_TOKEN
+
+def get_ice_pass():
+    return ICE_ACCESS_TOKEN
+
 #in the future these values would be put in cache maybe
-clients = defaultdict(set)
+clients = {}
 
 def get_notice_msg(msg, msg_type=SERVER_NOTICE_TYPE):
     data = {
@@ -66,6 +76,7 @@ def get_notice_msg(msg, msg_type=SERVER_NOTICE_TYPE):
      'message': msg
      }
     return json.dumps(data)
+
 
 def make_url(host, path, protocol=WS_PROTOCOL, **kwargs):
     base_url = '%s://%s%s' % (protocol, host, path)
@@ -79,8 +90,9 @@ def make_relative_url(path, **kwargs):
 class ICEServerHandler(web.RequestHandler):
 
     def post(self, *args, **kwargs):
-        self.add_header('Content-Type', 'application/json')
-        self.write(json.dumps(iceServers))
+        if has_ice_pass(self):
+            self.add_header('Content-Type', 'application/json')
+            self.write(json.dumps(iceServers))
 
 
 class BaseTemplateHandler(web.RequestHandler):
@@ -94,7 +106,8 @@ class BaseTemplateHandler(web.RequestHandler):
         ice_url = make_relative_url(app.reverse_url('ice_url'))
         logger.debug('using ice servers: %s' % ice_url)
         self.render(os.path.join(TEMPLATE_DIR, "base.html"),
-                    ws_uri=ws_uri, my_id=id, peer_id=peer_id, title=self.title, ice_url=ice_url)
+                    ws_uri=ws_uri, my_id=id, peer_id=peer_id, title=self.title,
+                    ice_url=ice_url, ice_pass=get_ice_pass())
 
     def get(self, *args, **kwargs):
         self.process_request(*args, **kwargs)
@@ -118,11 +131,13 @@ class BaseHandler(websocket.WebSocketHandler):
         #to do, restrict cross domain login
         return True
 
-    def on_connection_close(self):
+    def on_close(self):
         logger.info('lost connection "%s"' % self.id)
         self.closed = True
         self.clean()
         super(BaseHandler, self).on_connection_close()
+
+    # def on_close(self):
 
     def clean(self):
         pass
@@ -139,9 +154,12 @@ class WebRTCHandler(BaseHandler):
         self.peer_id = self.get_query_argument('peer_id', None)
         logger.info('new id: %s, peer: %s' % (self.id, self.peer_id))
         if self.id and self.id is not self.peer_id:
-            lock = threading.Lock()
-            with lock:
-                clients[self.id].add(self)
+            if clients.has_key(self.id) is False:
+                clients[self.id] = set()  #removing thread lock since impact is only with present peer
+                # lock = threading.Lock()
+                # with lock:
+                #     clients[self.id] = set()
+            clients[self.id].add(self)
         else:
             self.close(BAD_REQUEST_STATUS, BAD_REQUEST)
         logger.debug('clients: %s, closed: %s' % (len(clients), self.closed))
@@ -149,6 +167,7 @@ class WebRTCHandler(BaseHandler):
     def on_message(self, message):
         logger.debug('from: %s, to: %s, msg: %s' % (self.id, self.peer_id, message))
         sent = False
+        my_clients = clients[self.id]
         if clients.has_key(self.peer_id):
             peer_clients = clients[self.peer_id]
             for client in peer_clients:
@@ -158,11 +177,15 @@ class WebRTCHandler(BaseHandler):
                         sent = True
                     except Exception, ex:
                         logger.error('error sending from: %s, To: %s' % (self.id, self.peer_id))
-        if not sent:
-            my_clients = clients[self.id]
-            message = get_notice_msg(PEER_UNAVAILABLE)
             for client in my_clients:
-                if client.id == self.peer_id:       ##only notify on relevant conversation
+                if client is not self and client.peer_id == self.peer_id:  ##notify your other clients of your msg
+                    client.write_message(message)
+        logger.debug('message to: %s not sent' % self.peer_id)
+        if not sent:
+            message = get_notice_msg(PEER_UNAVAILABLE)
+            logger.debug('sending to: %s msg: %s' % (self.id, message))
+            for client in my_clients:
+                if client.peer_id == self.peer_id:       ##only notify on relevant conversation
                     try:
                         client.write_message(message) #just try to notify if you can
                     except:
@@ -170,11 +193,12 @@ class WebRTCHandler(BaseHandler):
 
     def clean(self):
         logger.debug('cleaning.. %s' % self.id)
-        lock = threading.Lock()
-        with lock:
-            clients[self.id].remove(self)
-            if not clients[self.id]:
-                clients.pop(self.id)
+        clients[self.id].remove(self)
+        if not clients[self.id]:
+            clients.pop(self.id)   #removing the thread lock, since impact is only with present user
+            # lock = threading.Lock()
+            # with lock:
+            #     clients.pop(self.id)
         logger.debug('closed: %s. total clients: %s' % (self.id, len(clients)))
 
 class CallHandler(WebRTCHandler):
@@ -189,34 +213,9 @@ app = web.Application([
     (r'/static/(.*)', web.StaticFileHandler, {'path': STATIC_DIR}),
     web.URLSpec(r'/call', CallTemplateHandler, name='caller_page'),
     web.URLSpec(r'/recieve', RecieveTemplateHandler, name='reciever_page'),
-    web.URLSpec(r'/ice_servers', ICEServerHandler, name='ice_url'),
+    web.URLSpec(ICE_URL, ICEServerHandler, name='ice_url'),
 ])
 
-
-class MyDaemon(Daemon):
-    def run(self):
-        app.listen(APP_PORT)
-        ioloop.IOLoop.instance().start()
-
-def get_daemon():
-    return MyDaemon(PID_FILE, stdout=LOG_FILE, stderr=LOG_FILE)
-
 if __name__ == '__main__':
-    daemon = get_daemon()
-    if len(sys.argv) >= 2:
-        if len(sys.argv) == 3 and sys.argv[2].isdigit():
-            APP_PORT = int(sys.argv[2])
-        if 'start' == sys.argv[1]:
-            daemon.start()
-        elif 'stop' == sys.argv[1]:
-            daemon.stop()
-        elif 'restart' == sys.argv[1]:
-            daemon.restart()
-        else:
-            print 'unknown command'
-            sys.exit(2)
-        sys.exit(0)
-    else:
-        print 'usage: %s start|stop|restart port' % sys.argv[0]
-        sys.exit(2)
-
+    app.listen(APP_PORT)
+    ioloop.IOLoop.instance().start()

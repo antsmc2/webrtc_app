@@ -69,7 +69,7 @@
 
 /* The "Hang up" button */
 #hangup-button {
-  display:block;
+  display: inline-block;
   width:80px;
   height:24px;
   border-radius: 8px;
@@ -91,6 +91,43 @@
 }
 
 #hangup-button:disabled {
+  filter: grayscale(50%);
+  -webkit-filter: grayscale(50%);
+  cursor: default;
+}
+
+#call-buttons {
+  position:relative;
+  top: 80%;
+  display: block;
+  height: 30px;
+  padding-left: 35%;
+}
+
+/* The "Hang up" button */
+#restart-call-button {
+  display:inline-block;
+  width:80px;
+  height:24px;
+  border-radius: 8px;
+  position:relative;
+  margin:auto;
+  top: 80%;
+  background-color: rgba(0, 150, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0px 0px 1px 2px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+  font-family: "Lucida Grande", "Arial", sans-serif;
+  color: rgba(255, 255, 255, 1.0);
+  cursor: pointer;
+}
+
+#restart-call-button:hover {
+  filter: brightness(150%);
+  -webkit-filter: brightness(150%);
+}
+
+#restart-call-button:disabled {
   filter: grayscale(50%);
   -webkit-filter: grayscale(50%);
   cursor: default;

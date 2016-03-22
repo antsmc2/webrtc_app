@@ -7,8 +7,6 @@ class TestRecieverApp(BasicTestCase):
 
     @testing.gen_test
     def test_recieve_page_uses_RecieveHandler_for_signaling(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
         reciever_page_uri = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
@@ -24,8 +22,6 @@ class TestRecieverApp(BasicTestCase):
 
     @testing.gen_test
     def test_recieve_websocket_message_is_sent_to_the_correct_caller(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID2)
         caller_socket1 =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
         caller_socket2 =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
@@ -51,14 +47,15 @@ class TestRecieverApp(BasicTestCase):
         recieve_ws_uri = self.make_relative_url(webrtc_server.app.reverse_url('reciever_ws'),
                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
         loader = template.Loader(webrtc_server.TEMPLATE_DIR)
-        self.assertEqual(response.body, loader.load('base.html').generate(recieve_ws_uri=recieve_ws_uri,
-                    my_id=TEST_PEER_ID1, peer_id=MY_CALLER_ID, title='Receiver'))
+        ice_url = self.make_relative_url(webrtc_server.app.reverse_url('ice_url'))
+        self.assertEqual(response.body, loader.load('base.html').generate(ws_uri=recieve_ws_uri,
+                    my_id=TEST_PEER_ID1, peer_id=MY_CALLER_ID, title='Receiver',
+                                                                          ice_url=ice_url,
+                                                                          ice_pass=webrtc_server.get_ice_pass()))
 
     @testing.gen_test
     def test_get_or_post_to_recieve_page_url_gives_same_reciever_page(self):
         import urllib
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
         reciever_page_uri = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
                                         protocol='http', id=TEST_PEER_ID1, peer_id=MY_CALLER_ID)
         reciever_page_uri_no_query_string = self.make_url(webrtc_server.app.reverse_url('reciever_page'),
@@ -75,65 +72,51 @@ class TestRecieverApp(BasicTestCase):
             self.assertTrue(False)
 
     @testing.gen_test
-    def test_recepient_removed_from_inmemory_when_peer_disconnects(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
+    def test_ice_server_is_retreived_with_correct_token(self):
+        ice_uri_no_query_string = self.make_url(webrtc_server.app.reverse_url('ice_url'),
+                                        protocol='http')
+        response = yield self.http_client.fetch(ice_uri_no_query_string,
+                                                     method='POST', body=webrtc_server.ICE_ACCESS_TOKEN)
+        self.assertEqual(json.loads(response.body), webrtc_server.iceServers)
+
+    @testing.gen_test
+    def test_reciever_ws_gets_peer_unavailable_msg_when_peer_gets_disconnected(self):
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        yield client_socket.read_message() #call ini message
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
         test_msg = 'hey man'
+        test_msg1 = 'hey man2'
         caller_socket.write_message(test_msg)
-        val = yield reciever_socket.read_message()
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
         caller_socket.close()
-        val = yield client_socket.read_message()
-        self.assertTrue(TEST_PEER_ID1 not in webrtc_server.peers.keys())
+        reciever_socket.write_message(test_msg1)
+        reciever_socket.write_message(test_msg1)
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(webrtc_server.get_notice_msg(webrtc_server.PEER_UNAVAILABLE), rcved_msg)
 
     @testing.gen_test
-    def test_recepient_removed_from_inmemory_when_recepient_disconnects(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
+    def test_after_reciever_getting_peer_unavailable_and_peer_is_back_online_msg_is_delivered_to_peer(self):
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        yield client_socket.read_message() #call ini message
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
         test_msg = 'hey man'
+        test_msg1 = 'hey man2'
         caller_socket.write_message(test_msg)
-        yield reciever_socket.read_message()
-        reciever_socket.close()   #closing reciever should trigger close caller
-        val = yield client_socket.read_message() #this leads to call dropped message
-        self.assertTrue(TEST_PEER_ID1 not in webrtc_server.peers.keys())
-
-    @testing.gen_test
-    def test_recepient_disconnection_triggers_caller_disconnection(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
+        caller_socket.close()
+        reciever_socket.write_message(test_msg1)
+        reciever_socket.write_message(test_msg1)
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(webrtc_server.get_notice_msg(webrtc_server.PEER_UNAVAILABLE), rcved_msg)
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        yield client_socket.read_message() #call ini message
-        reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
-                                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
-        test_msg = 'hey man'
-        caller_socket.write_message(test_msg)
-        yield reciever_socket.read_message()
-        reciever_socket.close()   #closing reciever should trigger close caller
-        msg = yield client_socket.read_message() #this leads to call dropped message
-        self.assertEqual(msg, webrtc_server.get_notice_msg(MY_CALLER_ID,
-                                webrtc_server.CALL_TYPE, webrtc_server.CALL_DROPPED)) #assert call dropped
-
-    @testing.gen_test
-    def test_when_clients_comes_online_clientws_is_added_to_memory(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
-        self.assertTrue(TEST_PEER_ID1 in webrtc_server.clients.keys())
-
-    @testing.gen_test
-    def test_when_clients_goes_offline_clientws_is_removed_from_memory(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
-        client_socket.read_message()
-        client_socket.close()
-        client_socket2 = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                     id=TEST_PEER_ID2)
-        self.assertTrue(TEST_PEER_ID1 not in webrtc_server.clients.keys())
-        self.assertTrue(TEST_PEER_ID2 in webrtc_server.clients.keys())
+        reciever_socket.write_message(test_msg)
+        rcved_msg = yield caller_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
 
 if __name__ == "__main__":
     testing.unittest.main(verbosity=1)

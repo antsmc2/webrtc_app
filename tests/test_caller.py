@@ -3,47 +3,52 @@ from test_common import *
 
 class TestCallerApp(BasicTestCase):
 
-    def test_caller_gets_http_404_when_client_websocket_is_offline(self):
-        response = self.fetch(webrtc_server.app.reverse_url('caller_page'))
-        self.assertEqual(response.code, 404)
-
-    def test_caller_gets_peer_unavailabe_message_when_client_websocket_is_offline(self):
-        response = self.fetch(webrtc_server.app.reverse_url('caller_page'))
-        self.assertEqual(response.body, webrtc_server.PEER_UNAVAILABLE)
-
     @testing.gen_test
     def test_caller_page_is_rendered_correctly(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
         caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
                                         protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
         response = yield self.http_client.fetch(caller_page_uri)
         caller_ws_uri = self.make_relative_url(webrtc_server.app.reverse_url('caller_ws'),
                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
         loader = template.Loader(webrtc_server.TEMPLATE_DIR)
-        self.assertEqual(response.body, loader.load('base.html').generate(caller_ws_uri=caller_ws_uri,
+        ice_url = self.make_relative_url(webrtc_server.app.reverse_url('ice_url'))
+        self.assertEqual(response.body, loader.load('base.html').generate(ws_uri=caller_ws_uri,
                                                                           my_id=MY_CALLER_ID,
                                                                           peer_id=TEST_PEER_ID1,
-                                                                          title='Caller'))
+                                                                          title='Caller',
+                                                                          ice_url=ice_url,
+                                                                          ice_pass=webrtc_server.get_ice_pass()))
 
     @testing.gen_test
-    def test_caller_is_accessible_when_client_websocket_is_online(self):
-        code = -1
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
+    def test_client_count_increases_everytime_ws_logs_in(self):
+        caller_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
+        self.assertEqual(len(webrtc_server.clients), 1)
+        reciever_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+                                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
+        self.assertEqual(len(webrtc_server.clients), 2)
+
+    @testing.gen_test
+    def test_caller_page_contain_ice_credentials_with_incorrect_ice_token(self):
         caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
                                         protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
-        try:
-            response = yield self.http_client.fetch(caller_page_uri)
-            code = response.code
-        except httpclient.HTTPError, ex:
-            code = ex.code
-        self.assertEqual(code, 200)
+        ice_token = webrtc_server.ICE_ACCESS_TOKEN
+        webrtc_server.ICE_ACCESS_TOKEN = ''
+        response = yield self.http_client.fetch(caller_page_uri)
+        webrtc_server.ICE_ACCESS_TOKEN = ice_token
+        caller_ws_uri = self.make_relative_url(webrtc_server.app.reverse_url('caller_ws'),
+                                        id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+        loader = template.Loader(webrtc_server.TEMPLATE_DIR)
+        ice_url = self.make_relative_url(webrtc_server.app.reverse_url('ice_url'))
+        self.assertNotEquals(response.body, loader.load('base.html').generate(ws_uri=caller_ws_uri,
+                                                                          my_id=MY_CALLER_ID,
+                                                                          peer_id=TEST_PEER_ID1,
+                                                                          title='Caller',
+                                                                          ice_url=ice_url,
+                                                                          ice_pass=webrtc_server.get_ice_pass()))
 
     @testing.gen_test
     def test_caller_page_uses_CallHandler_for_signaling(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
         caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
                                         protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
         try:
@@ -58,8 +63,6 @@ class TestCallerApp(BasicTestCase):
     @testing.gen_test
     def test_get_or_post_to_call_page_url_gives_same_caller_page(self):
         import urllib
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
         caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
                                         protocol='http', id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
         caller_page_uri_no_query_string = self.make_url(webrtc_server.app.reverse_url('caller_page'),
@@ -76,121 +79,156 @@ class TestCallerApp(BasicTestCase):
             self.assertTrue(False)
 
     @testing.gen_test
-    def test_caller_gets_peer_busy_page_when_recepient_peer_is_busy_with_a_caller(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
-        caller_socket = self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+    def test_caller1_connects_to_peer2_then_again_caller1_connects_to_peer2_using_separate_client_passes(self):
+        caller_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        reciever_socket = self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+        caller_socket2 = yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
+        reciever_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
-        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),#call same peer again
-                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
-        with self.assertRaises(httpclient.HTTPError) as context:
-            yield self.http_client.fetch(caller_page_uri)
-        self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
+        test_message = 'hey man'
+        test_message2 = 'hey boy'
+        caller_socket.write_message(test_message)
+        caller_socket2.write_message(test_message2)
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_message, rcved_msg)
+        rcved_msg2 =  yield reciever_socket.read_message()
+        self.assertEqual(test_message2, rcved_msg2)
 
 
     @testing.gen_test
-    def test_if_first_caller_starts_call_to_peer_subsequent_caller_gets_page_peer_busy(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
-        caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
-                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
-        yield client_socket.read_message() #call init msg
-        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
-                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
-        with self.assertRaises(httpclient.HTTPError) as context:
-            yield self.http_client.fetch(caller_page_uri)
-        self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
+    def test_caller1_connects_from_2_clients_msg_to_peer_2_from_either_client_is_seen_in_sibling_client(self):
+        caller_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
+        caller_socket2 = yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
+        reciever_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+                                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
+        reciever_socket2 = yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+                                                         id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
+        self.assertEqual(len(webrtc_server.clients[MY_CALLER_ID]), 2)
+        test_message = 'hey man'
+        test_message2 = 'hey boy'
+        caller_socket.write_message(test_message)
+        caller_socket2.write_message(test_message2)
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_message, rcved_msg)
+        rcved_msg2 =  yield reciever_socket.read_message()
+        self.assertEqual(test_message2, rcved_msg2)
+        rcved_msg = yield reciever_socket2.read_message()
+        self.assertEqual(test_message, rcved_msg)
+        rcved_msg2 =  yield reciever_socket2.read_message()
+        self.assertEqual(test_message2, rcved_msg2)
+        cl1_recv_msg = yield caller_socket.read_message()
+        self.assertEqual(cl1_recv_msg, test_message2)
+        cl2_recv_msg = yield caller_socket2.read_message()
+        self.assertEqual(cl2_recv_msg, test_message)
+
+
+    # @testing.gen_test
+    # def test_if_first_caller_starts_call_to_peer_subsequent_caller_message_same_peer(self):
+    #     client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
+    #                                             id=TEST_PEER_ID1)
+    #     caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+    #                                                      id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
+    #     yield client_socket.read_message() #call init msg
+    #     caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
+    #                                     protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
+    #     with self.assertRaises(httpclient.HTTPError) as context:
+    #         yield self.http_client.fetch(caller_page_uri)
+    #     self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
 
     @testing.gen_test
-    def test_first_caller_drops_then_subsequent_caller_can_reach_same_reciepient(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'),
-                                                id=TEST_PEER_ID1)
+    def test_two_callers_can_converse_with_same_reciepent_provided_its_separate_conversation(self):
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1)
-        yield client_socket.read_message()  #call int msg
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
-        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
-                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
-        with self.assertRaises(httpclient.HTTPError) as context:
-            yield self.http_client.fetch(caller_page_uri)
-        self.assertTrue(context.exception.message.endswith(webrtc_server.PEER_BUSY))
-        caller_socket.close()
-        msg = yield client_socket.read_message() #call dropped msg
-        self.assertEqual(msg, webrtc_server.get_notice_msg(MY_CALLER_ID,
-                                                webrtc_server.CALL_TYPE, webrtc_server.CALL_DROPPED))
-        caller_page_uri = self.make_url(webrtc_server.app.reverse_url('caller_page'),
-                                        protocol='http', id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
-        response = yield self.http_client.fetch(caller_page_uri)
-        self.assertEqual(response.code, 200)
-
-    @testing.gen_test
-    def test_caller_websocket_triggers_correct_client_websocket_with_reciepient_peer_details(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
-        caller_socket = self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
-                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        msg = yield client_socket.read_message()
-        self.assertEqual(msg, webrtc_server.get_notice_msg(MY_CALLER_ID,
-                                                webrtc_server.CALL_TYPE, webrtc_server.CALL_INIT))
+        test_message = 'hey boy'
+        caller_socket.write_message(test_message)
+        rcv_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_message, rcv_msg)
+        caller_socket2 =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=TEST_PEER_ID2, peer_id=TEST_PEER_ID1)
+        test_message2 = 'hello man'
+        caller_socket2.write_message(test_message2)
+        # try:
+        #     yield reciever_socket.read_message()
+        #     self.fail('expected timeout did not happen')
+        # except Exception:
+        #     pass
+        ##login to same conversation
+        reciever_socket2 = yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+                                                         id=TEST_PEER_ID1, peer_id=TEST_PEER_ID2)
+        caller_socket2.write_message(test_message2)
+        rcv_msg = yield reciever_socket2.read_message()
+        self.assertEqual(test_message2, rcv_msg)
 
     @testing.gen_test
     def test_subsequent_messages_from_caller_websocket_goes_to_reciepient_peer_websocket(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
         test_msg = 'hey man'
+        test_msg1 = 'hey man2'
         caller_socket.write_message(test_msg)
         rcved_msg = yield reciever_socket.read_message()
         self.assertEqual(test_msg, rcved_msg)
+        caller_socket.write_message(test_msg1)
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_msg1, rcved_msg)
 
     @testing.gen_test
-    def test_caller_info_is_removed_from_inmemory_when_caller_websocket_disconnects(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
+    def test_caller_ws_gets_peer_unavailable_msg_when_peer_gets_disconnected(self):
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        yield client_socket.read_message() #call ini message
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
         test_msg = 'hey man'
+        test_msg1 = 'hey man2'
         caller_socket.write_message(test_msg)
-        caller_socket.close()
-        yield reciever_socket.read_message()
-        yield client_socket.read_message() #call dropped msg
-        self.assertTrue(MY_CALLER_ID not in webrtc_server.peers.keys())
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
+        reciever_socket.close()
+        caller_socket.write_message(test_msg1)
+        rcved_msg = yield caller_socket.read_message()
+        self.assertEqual(webrtc_server.get_notice_msg(webrtc_server.PEER_UNAVAILABLE), rcved_msg)
 
     @testing.gen_test
-    def test_reciepient_websocket_is_closed_when_caller_websocket_disconnects(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
+    def test_after_caller_getting_peer_unavailable_and_peer_is_back_online_msg_is_delivered_to_peer(self):
         caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
                                                          id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        yield client_socket.read_message() #call init
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
         test_msg = 'hey man'
+        test_msg1 = 'hey man2'
         caller_socket.write_message(test_msg)
-        val = yield reciever_socket.read_message()
-        caller_socket.close()
-        yield client_socket.read_message() #call dropped msg
-        self.assertTrue(TEST_PEER_ID1 not in webrtc_server.peers.keys())
-
-    @testing.gen_test
-    def test_recipent_peer_client_websocket_gets_call_dropped_msg_when_caller_websocket_disconnects(self):
-        client_socket = yield self._mk_ws_connection(webrtc_server.app.reverse_url('login_ws'), id=TEST_PEER_ID1)
-        caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
-                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
-        val = yield client_socket.read_message() #login message
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
+        reciever_socket.close()
+        caller_socket.write_message(test_msg1)
+        rcved_msg = yield caller_socket.read_message()
+        self.assertEqual(webrtc_server.get_notice_msg(webrtc_server.PEER_UNAVAILABLE), rcved_msg)
         reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
                                                          id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
-        test_msg = 'hey man'
         caller_socket.write_message(test_msg)
-        val = yield reciever_socket.read_message()
-        caller_socket.close()
-        msg = yield client_socket.read_message()
-        self.assertEqual(msg, webrtc_server.get_notice_msg(MY_CALLER_ID,
-                                                webrtc_server.CALL_TYPE, webrtc_server.CALL_DROPPED))
+        rcved_msg = yield reciever_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
+    #
+    # @testing.gen_test
+    # def test_caller_info_is_removed_from_inmemory_when_caller_websocket_disconnects(self):
+    #     caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+    #                                                      id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
+    #     reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+    #                                                      id=TEST_PEER_ID1, peer_id=MY_CALLER_ID) #pickup call
+    #     test_msg = 'yep yep'
+    #     caller_socket.write_message(test_msg)
+    #     val = yield reciever_socket.read_message()
+    #     caller_socket.close()
+    #     caller_socket = None
+    #     reciever_socket.write_message(test_msg)
+    #     self.assertTrue(MY_CALLER_ID not in webrtc_server.clients.keys())
 
-if __name__ == "__main__":                                                                                                       
+if __name__ == "__main__":
     testing.unittest.main(verbosity=1)
