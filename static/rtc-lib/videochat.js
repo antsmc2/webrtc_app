@@ -567,6 +567,7 @@ function hangUpCall() {
 function restartCall() {
   closeVideoCall();
   start();
+  updateChat({text: 'Connecting...'});
   sendToServer({
     name: myUsername,
     target: targetUsername,
