@@ -118,5 +118,20 @@ class TestRecieverApp(BasicTestCase):
         rcved_msg = yield caller_socket.read_message()
         self.assertEqual(test_msg, rcved_msg)
 
+    @testing.gen_test
+    def test_reciever_with_no_peer_id_gets_message_from_caller_with_reciever_as_peer_id(self):
+        caller_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('caller_ws'),
+                                                         id=MY_CALLER_ID, peer_id=TEST_PEER_ID1) #make call
+        reciever_socket =  yield self._mk_ws_connection(webrtc_server.app.reverse_url('reciever_ws'),
+                                                         id=TEST_PEER_ID1) #pickup call
+        test_msg = 'hey man'
+        test_msg2 = 'hey boy'
+        caller_socket.write_message(test_msg)
+        caller_socket.write_message(test_msg2)
+        rcved_msg = yield reciever_socket.read_message()
+        rcved_msg2 = yield reciever_socket.read_message()
+        self.assertEqual(test_msg, rcved_msg)
+        self.assertEqual(test_msg2, rcved_msg2)
+
 if __name__ == "__main__":
     testing.unittest.main(verbosity=1)
