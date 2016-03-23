@@ -608,6 +608,7 @@ function closeVideoCall() {
     myPeerConnection.close();
     myPeerConnection = null;
     dataChannel = null;
+    updateChat({text: 'Disconnected.'});
   }
 
   // Disable the hangup button
@@ -615,5 +616,4 @@ function closeVideoCall() {
   document.getElementById("restart-call-button").disabled = false;
   document.getElementById("hangup-button").disabled = true;
   disableChat();
-  targetUsername = null;
 }
