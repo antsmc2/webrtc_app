@@ -14,6 +14,7 @@ var mediaConstraints = {
 };
 
 var peerConnected = false;
+var callInProgress = false;
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
 var meColor = '#4169E1';
@@ -23,9 +24,11 @@ var myPeerConnection = null;    // RTCPeerConnection
 var dataChannel = null;
 var dataChannelID = null;
 var clientID = 0;
+var serverUrl = null;
 
 var remoteVideo = null;
 var localVideo = null;
+var hangupButton = null;
 var startTime = null;
 
 
@@ -54,6 +57,8 @@ function getName(pc) {
 
 
 function sendToServer(msg) {
+  if(!msg.target)
+    msg.target = targetUsername;
   var msgJSON = JSON.stringify(msg);
 
   trace("Sending '" + msg.type + "' message: " + msgJSON);
@@ -65,7 +70,8 @@ function broadcastPresence(username) {
     sendToServer({
       name: myUsername,
       date: Date.now(),
-      type: "username"
+      type: "username",
+      target: targetUsername
     });
 }
 
@@ -81,87 +87,20 @@ function connect(path, username, peer_id, ice_url, ice_pass) {
   if (req_protocol === "https:") {
       scheme += "s";
   }
-  var serverUrl = scheme + "://" + myHostname + ':' + myPort + path;
+  serverUrl = scheme + "://" + myHostname + ':' + myPort + path;
 
   console.log('using server url: ' + serverUrl);
-
-  connection = new WebSocket(serverUrl);
-
-  connection.onopen = function(event) {
-    //get ice servers
-    var xhttp = new XMLHttpRequest();
+  var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
        if (xhttp.readyState == 4 && xhttp.status == 200) {
           iceServers = JSON.parse(xhttp.responseText);
-          start();
+          initialize(serverUrl);
        }
     }
     xhttp.open("POST", ice_url);
     xhttp.send(ice_pass);
-    trace('connection opened.');
-  };
 
-
-
-  connection.onmessage = function(evt) {
-//    if (document.getElementById("send").disabled) {
-//      document.getElementById("text").disabled = false;
-//      document.getElementById("send").disabled = false;
-//    }
-    var text = "";
-    var msg = JSON.parse(evt.data);
-    trace("Message received: ");
-    console.dir(msg);
-    var time = new Date(msg.date);
-    var timeStr = time.toLocaleTimeString();
-
-    switch(msg.type) {
-
-      case "username":
-        call(msg.name);
-        break;
-
-      case "message":
-        updateChat(msg);
-        break;
-
-      case "add-stream":  //invitation to add stream
-        handleAddStreamMsg(msg);
-        break;
-
-      // Signaling messages: these messages are used to trade WebRTC
-      // signaling information during negotiations leading up to a video
-      // call.
-
-      case "video-offer":  // Invitation and offer to chat
-        handleVideoOfferMsg(msg);
-        break;
-
-      case "video-answer":  // Callee has answered our offer
-        handleVideoAnswerMsg(msg);
-        break;
-
-      case "new-ice-candidate": // A new ICE candidate has been received
-        handleNewICECandidateMsg(msg);
-        break;
-
-      case "hang-up": // The other peer has hung up the call
-        handleHangUpMsg(msg);
-        break;
-
-       case "restart-call":
-          closeVideoCall();
-          start();
-          break;
-
-      // Unknown message; output to console for debugging.
-
-      default:
-        trace("Error: Unknown message received: " + msg);
-    }
-
-  };
-
+    hangupButton = document.getElementById("hangup-button");
     remoteVideo = document.getElementById("received_video");
     localVideo = document.getElementById("local_video");
     localVideo.addEventListener('loadedmetadata', function() {
@@ -186,6 +125,83 @@ function connect(path, username, peer_id, ice_url, ice_pass) {
         startTime = null;
       }
     };
+
+}
+
+function initialize(serverUrl, onMediaCallback) {
+
+  connection = new WebSocket(serverUrl);
+  connection.onopen = function(event) {
+    //get ice servers
+    start(onMediaCallback);
+    trace('connection opened.');
+  };
+
+  connection.onmessage = function(evt) {
+//    if (document.getElementById("send").disabled) {
+//      document.getElementById("text").disabled = false;
+//      document.getElementById("send").disabled = false;
+//    }
+    var text = "";
+    var msg = JSON.parse(evt.data);
+    trace("Message received: ");
+    console.dir(msg);
+    if(msg.target != myUsername)
+        return;
+    var time = new Date(msg.date);
+    var timeStr = time.toLocaleTimeString();
+
+    switch(msg.type) {
+
+      case "username":
+        if(callInProgress == false) //you can only call if its your conversation
+            call(msg.name);
+        break;
+
+      case "message":
+        updateChat(msg);
+        break;
+
+      case "add-stream":  //invitation to add stream
+        handleAddStreamMsg(msg);
+        break;
+
+      // Signaling messages: these messages are used to trade WebRTC
+      // signaling information during negotiations leading up to a video
+      // call.
+
+      case "video-offer":  // Invitation and offer to chat
+        handleVideoOfferMsg(msg);
+        break;
+
+      case "video-answer":  // Callee has answered our offer
+        handleVideoAnswerMsg(msg);
+        break;
+
+      case "new-ice-candidate": // A new ICE candidate has been received
+        if(peerConnected == false)
+            handleNewICECandidateMsg(msg);
+        break;
+
+      case "hang-up": // The other peer has hung up the call
+        handleHangUpMsg(msg);
+        break;
+
+       case "start-call":
+          if(callInProgress == false)
+              start(function(){
+                broadcastPresence(myUsername);
+              });
+          break;
+
+      // Unknown message; output to console for debugging.
+
+      default:
+        trace("Error: Unknown message received: " + msg);
+    }
+
+  };
+
 
 }
 
@@ -310,13 +326,28 @@ function receiveDataChannel(event) {
 }
 
 
-function start() {
-  document.getElementById("restart-call-button").disabled = true;
+function start(onMediaCallback) {
   trace('Requesting local stream');
+  trace('using media callback ' + onMediaCallback);
   navigator.mediaDevices.getUserMedia(mediaConstraints)
   .then(function(stream) {
       gotStream(stream);
-      myPeerConnection = new RTCPeerConnection({
+      resetPeer();
+      if(onMediaCallback) {
+        onMediaCallback();
+      }
+      else {
+        broadcastPresence(myUsername);
+      }
+
+  })
+  .catch(function(e) {
+    alert('getUserMedia() error: ' + e.name);
+  });
+}
+
+function resetPeer() {
+       myPeerConnection = new RTCPeerConnection({
       iceServers: iceServers
       });
       trace('Created local peer connection object myPeerConnection');
@@ -325,11 +356,6 @@ function start() {
       };
       myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
       myPeerConnection.onaddstream = gotRemoteStream;
-      broadcastPresence(myUsername);
-  })
-  .catch(function(e) {
-    alert('getUserMedia() error: ' + e.name);
-  });
 }
 
 function call() {
@@ -400,12 +426,12 @@ function gotRemoteStream(e) {
   remoteVideo.srcObject = e.stream;
   remoteVideo.src = window.URL.createObjectURL(e.stream);
   trace('pc2 received remote stream');
-  document.getElementById("hangup-button").disabled = false;
 }
 
 
 function handleVideoOfferMsg(msg) {
-  //hangupButton.disabled = false;
+  hangupButton.disabled = false;
+  callInProgress = true;
   myPeerConnection.ondatachannel = receiveDataChannel; //register to use callers datachannel
   var desc = new RTCSessionDescription(msg.sdp);
   trace('Accepting call');
@@ -463,6 +489,8 @@ function onCreateAnswerSuccess(desc) {
 }
 
 function handleVideoAnswerMsg(msg) {
+  callInProgress = true;
+  hangupButton.disabled = false;
   var desc = new RTCSessionDescription(msg.sdp);
   trace('myPeerConnection setRemoteDescription start');
   myPeerConnection.setRemoteDescription(desc)
@@ -504,6 +532,7 @@ function onAddIceCandidateError(pc, error) {
 
 function handleHangUpMsg(msg) {
   trace("*** Received hang up notification from other peer");
+  updateChat({text: targetUsername + ' ended call.'});
   closeVideoCall();
 }
 
@@ -512,8 +541,6 @@ function handleHangUpMsg(msg) {
 // local ICE framework.
 
 function handleNewICECandidateMsg(msg) {
-  if(peerConnected)
-      return;
   var candidate = new RTCIceCandidate(msg.candidate);
   trace("Adding received ICE candidate: " + JSON.stringify(candidate));
   myPeerConnection.addIceCandidate(candidate)
@@ -542,7 +569,7 @@ function handleICEConnectionStateChangeEvent(event) {
     case "closed":
     case "failed":
     case "disconnected":
-      peerConnected = false;
+      updateChat({text: targetUsername + ' Disconnected.'});
       closeVideoCall();
       break;
     case "connected":
@@ -561,29 +588,42 @@ function handleICEConnectionStateChangeEvent(event) {
 
 function hangUpCall() {
   closeVideoCall();
+  updateChat({text: 'Call ended.'});
   sendToServer({
     name: myUsername,
     target: targetUsername,
     type: "hang-up"
   });
+  return false;
 }
 
 //restart the call
 function restartCall() {
-  closeVideoCall();
-  start();
-  updateChat({text: 'Connecting...'});
-  sendToServer({
-    name: myUsername,
-    target: targetUsername,
-    type: "restart-call"
+  hangUpCall();
+  connection.close();  //close since this is being reinitialized
+  initialize(serverUrl, function(){
+      sendToServer({
+        name: myUsername,
+        target: targetUsername,
+        type: "start-call"
+      });
   });
+  updateChat({text: 'Connecting...'});
+    return false;
 }
 
 
 function closeVideoCall() {
 
   trace("Closing the call");
+
+   if(dataChannel) {
+        //if(dataChannelID == dataChannel.id)
+        dataChannel.close();
+        dataChannel = null;
+        dataChannelID = null;
+   }
+
   // Close the RTCPeerConnection
 
   if (myPeerConnection) {
@@ -601,22 +641,22 @@ function closeVideoCall() {
 
     remoteVideo.src = null;
     localVideo.src = null;
+    remoteVideo.srcObject = null;
+    localVideo.srcObject = null;
 
-    if(dataChannelID == dataChannel.id)
-      dataChannel.close();
     //disable listeners
     myPeerConnection.onicecandidate = null;
     myPeerConnection.oniceconnectionstatechange = null;
     myPeerConnection.ondatachannel = null;
-
     myPeerConnection.onaddstream = null;
     // Close the peer connection
     myPeerConnection.close();
     myPeerConnection = null;
-    dataChannel = null;
-    updateChat({text: 'Disconnected.'});
+    trace('done reseting all');
   }
 
+  peerConnected = false;
+  callInProgress = false;
   // Disable the hangup button
 
   document.getElementById("restart-call-button").disabled = false;

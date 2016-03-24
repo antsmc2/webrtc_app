@@ -182,9 +182,9 @@ class WebRTCHandler(BaseHandler):
                         sent = True
                     except Exception, ex:
                         logger.error('error sending from: %s, To: %s' % (self.id, self.peer_id))
-            for client in my_clients:
-                if client is not self and client.peer_id == self.peer_id:  ##notify your other clients of your msg
-                    client.write_message(message)
+        for client in my_clients:
+            if (client is not self) and (client.peer_id == self.peer_id):  ##notify your other clients of your msg
+                client.write_message(message)
         if not sent:
             logger.debug('message to: %s not sent' % self.peer_id)
             message = get_notice_msg(PEER_UNAVAILABLE)
