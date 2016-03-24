@@ -57,6 +57,16 @@ function getName(pc) {
 
 
 function sendToServer(msg) {
+
+  if(peerConnected == false) {
+      switch (connection.readyState) {
+          case WebSocket.CLOSING:
+          case WebSocket.CLOSED:
+            alert('Looks like you got offline. Pls Check your network and restart the call');
+            return;
+        }
+   }
+
   if(!msg.target)
     msg.target = targetUsername;
   var msgJSON = JSON.stringify(msg);
@@ -146,6 +156,9 @@ function initialize(serverUrl, onMediaCallback) {
     var msg = JSON.parse(evt.data);
     trace("Message received: ");
     console.dir(msg);
+    if(msg.msg_type == 'SERVER_NOTICE' && msg.message == 'PEER-UNAVAILABLE') {
+        return updateChat({text: targetUsername + ' not online'});
+    }
     if(msg.target != myUsername)
         return;
     var time = new Date(msg.date);
@@ -570,7 +583,7 @@ function handleICEConnectionStateChangeEvent(event) {
     case "closed":
     case "failed":
     case "disconnected":
-      updateChat({text: targetUsername + ' Disconnected.'});
+      updateChat({text: targetUsername + ' disconnected.'});
       closeVideoCall();
       break;
     case "connected":
@@ -602,8 +615,9 @@ function hangUpCall(event) {
 
 //restart the call
 function restartCall(event) {
-  hangUpCall();
-  connection.close();  //close since this is being reinitialized
+  try {
+      connection.close();  //close since this is being reinitialized
+  }catch(e){};
   initialize(serverUrl, function(){
       sendToServer({
         name: myUsername,
@@ -611,6 +625,7 @@ function restartCall(event) {
         type: "start-call"
       });
   });
+  hangUpCall();
   updateChat({text: 'Connecting...'});
     return false;
 }
