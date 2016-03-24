@@ -173,18 +173,18 @@ class WebRTCHandler(BaseHandler):
             logger.debug('sending to %s clients' % len(peer_clients))
             for client in peer_clients:
                 logger.debug('attempting send to: %s, client peer is: %s' % (client.id, client.peer_id))
-                logger.debug('client peer is me: %s, client peer is None: %s' % ((client.peer_id == self.id),
-                                                                             (client.peer_id is None)))
                 ## message only relevant peer or peer client with not having any conversation
                 if (client.peer_id == self.id) or (client.peer_id is None):
                     try:
                         client.write_message(message)
+                        logger.debug('sent to %s' % client.id)
                         sent = True
                     except Exception, ex:
                         logger.error('error sending from: %s, To: %s' % (self.id, self.peer_id))
         for client in my_clients:
             if (client is not self) and (client.peer_id == self.peer_id):  ##notify your other clients of your msg
                 client.write_message(message)
+                logger.debug('sent to %s' % client.id)
         if not sent:
             logger.debug('message to: %s not sent' % self.peer_id)
             message = get_notice_msg(PEER_UNAVAILABLE)

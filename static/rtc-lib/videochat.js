@@ -586,7 +586,7 @@ function handleICEConnectionStateChangeEvent(event) {
 // the other peer that the connection should be terminated and the UI
 // returned to the "no call in progress" state.
 
-function hangUpCall() {
+function hangUpCall(event) {
   closeVideoCall();
   updateChat({text: 'Call ended.'});
   sendToServer({
@@ -598,7 +598,7 @@ function hangUpCall() {
 }
 
 //restart the call
-function restartCall() {
+function restartCall(event) {
   hangUpCall();
   connection.close();  //close since this is being reinitialized
   initialize(serverUrl, function(){
@@ -641,8 +641,8 @@ function closeVideoCall() {
 
     remoteVideo.src = null;
     localVideo.src = null;
-    remoteVideo.srcObject = null;
-    localVideo.srcObject = null;
+
+    trace("--> disabling rtc listeners...");
 
     //disable listeners
     myPeerConnection.onicecandidate = null;
