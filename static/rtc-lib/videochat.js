@@ -13,6 +13,7 @@ var mediaConstraints = {
   video: true             // ...and we want a video track
 };
 
+var peerConnected = false;
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
 var meColor = '#4169E1';
@@ -511,6 +512,8 @@ function handleHangUpMsg(msg) {
 // local ICE framework.
 
 function handleNewICECandidateMsg(msg) {
+  if(peerConnected)
+      return;
   var candidate = new RTCIceCandidate(msg.candidate);
   trace("Adding received ICE candidate: " + JSON.stringify(candidate));
   myPeerConnection.addIceCandidate(candidate)
@@ -536,14 +539,16 @@ function handleICEConnectionStateChangeEvent(event) {
   trace("*** ICE connection state changed to " + myPeerConnection.iceConnectionState);
 
   switch(myPeerConnection.iceConnectionState) {
-//    case "closed":
-//    case "failed":
-//    case "disconnected":
-//      closeVideoCall();
-//      break;
-      case "connected":
-          myPeerConnection.oniceconnectionstatechange = null; //stop exchanging ice if it is completed.
-          break;
+    case "closed":
+    case "failed":
+    case "disconnected":
+      peerConnected = false;
+      closeVideoCall();
+      break;
+    case "connected":
+      peerConnected = true;
+    //  myPeerConnection.oniceconnectionstatechange = null; //stop exchanging ice if it is completed.
+      break;
   }
 }
 
