@@ -188,6 +188,7 @@ function initialize(serverUrl, onMediaCallback) {
         break;
 
        case "start-call":
+          updateChat({text: 'restart call from ' + targetUsername});
           if(callInProgress == false)
               start(function(){
                 broadcastPresence(myUsername);
@@ -587,8 +588,10 @@ function handleICEConnectionStateChangeEvent(event) {
 // returned to the "no call in progress" state.
 
 function hangUpCall(event) {
+  var callWasInProgress = callInProgress;
   closeVideoCall();
-  updateChat({text: 'Call ended.'});
+  if(callWasInProgress)
+    updateChat({text: 'Call ended.'});
   sendToServer({
     name: myUsername,
     target: targetUsername,
