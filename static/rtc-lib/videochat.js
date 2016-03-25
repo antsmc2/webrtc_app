@@ -147,7 +147,7 @@ function initialize(serverUrl, callbacks) {
     //get ice servers
     if(callbacks.onSignalingOpen)
         callbacks.onSignalingOpen();
-    start(callbacks.onMediaCallback);
+    start(callbacks.onFinishRTCInit);
     trace('on signal open sequence complete.');
   };
 
@@ -344,15 +344,15 @@ function receiveDataChannel(event) {
 }
 
 
-function start(onMediaCallback) {
+function start(onFinishRTCInit) {
   trace('Requesting local stream');
-  trace('using media callback ' + onMediaCallback);
+  trace('using media callback ' + onFinishRTCInit);
   navigator.mediaDevices.getUserMedia(mediaConstraints)
   .then(function(stream) {
       gotStream(stream);
       resetPeer();
-      if(onMediaCallback) {
-        onMediaCallback();
+      if(onFinishRTCInit) {
+        onFinishRTCInit();
       }
       else {
         broadcastPresence(myUsername);
@@ -625,7 +625,7 @@ function restartCall(event) {
   initialize(serverUrl,
                     {
                     'onSignalingOpen' : hangUpCall,
-                     'onMediaCallback': function(){
+                     'onFinishRTCInit': function(){
                                       sendToServer({
                                         name: myUsername,
                                         target: targetUsername,
