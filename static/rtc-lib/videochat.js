@@ -260,6 +260,7 @@ function updateChat(msg)
   var text = '<span class="you-msg" style="color: ' + color + ';">(' + timeStr + ") <b>" + name + "</b>: " + msg.text + "<br></span>";
   var chatPane = document.getElementById("chatbox");
   chatPane.innerHTML = chatPane.innerHTML + '<p class="chat">' + text + '</p>';
+  document.querySelector('#chatbox .chat:last-of-type').scrollIntoView();
 }
 
 function resetChat() {
