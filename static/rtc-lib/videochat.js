@@ -138,13 +138,17 @@ function connect(path, username, peer_id, ice_url, ice_pass) {
 
 }
 
-function initialize(serverUrl, onMediaCallback) {
-
+function initialize(serverUrl, callbacks) {
+  if(callbacks === undefined)
+    callbacks = {};
   connection = new WebSocket(serverUrl);
   connection.onopen = function(event) {
-    //get ice servers
-    start(onMediaCallback);
     trace('connection opened.');
+    //get ice servers
+    if(callbacks.onSignalingOpen)
+        callbacks.onSignalingOpen();
+    start(callbacks.onMediaCallback);
+    trace('on signal open sequence complete.');
   };
 
   connection.onmessage = function(evt) {
@@ -204,8 +208,8 @@ function initialize(serverUrl, onMediaCallback) {
           updateChat({text: 'restart call from ' + targetUsername});
           if(callInProgress == false)
               start(function(){
-                broadcastPresence(myUsername);
-              });
+                            broadcastPresence(myUsername);
+                        });
           break;
 
       // Unknown message; output to console for debugging.
@@ -618,14 +622,18 @@ function restartCall(event) {
   try {
       connection.close();  //close since this is being reinitialized
   }catch(e){};
-  initialize(serverUrl, function(){
-      sendToServer({
-        name: myUsername,
-        target: targetUsername,
-        type: "start-call"
-      });
-  });
-  hangUpCall();
+  initialize(serverUrl,
+                    {
+                    'onSignalingOpen' : hangUpCall,
+                     'onMediaCallback': function(){
+                                      sendToServer({
+                                        name: myUsername,
+                                        target: targetUsername,
+                                        type: "start-call"
+                                      });
+                                    }
+                    }
+             );
   updateChat({text: 'Connecting...'});
     return false;
 }
