@@ -151,6 +151,10 @@ function initialize(serverUrl, callbacks) {
     trace('on signal open sequence complete.');
   };
 
+  connection.onclose = function() {
+    trace('signal server link closed');
+  }
+
   connection.onmessage = function(evt) {
 //    if (document.getElementById("send").disabled) {
 //      document.getElementById("text").disabled = false;
