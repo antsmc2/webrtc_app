@@ -6,6 +6,7 @@ import json
 import logging
 from urllib import urlencode, quote
 from collections import OrderedDict, defaultdict
+import uuid
 import threading
 
 
@@ -143,13 +144,15 @@ class BaseHandler(websocket.WebSocketHandler):
         pass
 
 class WebRTCHandler(BaseHandler):
+    session_id = None
     peer_id = None
     
     def check_origin(self, origin):
         return True
 
     def open(self):
-        logger.debug('new connection ')
+        self.session_id = uuid.uuid4()
+        logger.debug('new connection %s' % self.session_id)
         self.id = self.get_query_argument('id', None)
         self.peer_id = self.get_query_argument('peer_id', None)
         logger.info('new id: %s, peer: %s' % (self.id, self.peer_id))
@@ -165,7 +168,7 @@ class WebRTCHandler(BaseHandler):
         logger.debug('clients: %s, closed: %s' % (len(clients), self.closed))
     
     def on_message(self, message):
-        logger.debug('from: %s, to: %s, msg: %s' % (self.id, self.peer_id, message))
+        logger.debug('from: %s<%s>, to: %s, msg: %s' % (self.id, self.session_id, self.peer_id, message))
         sent = False
         my_clients = clients[self.id]
         if clients.has_key(self.peer_id):
@@ -177,7 +180,7 @@ class WebRTCHandler(BaseHandler):
                 if (client.peer_id == self.id) or (client.peer_id is None):
                     try:
                         client.write_message(message)
-                        logger.debug('sent to %s' % client.id)
+                        logger.debug('sent to %s<%s>' % (client.id, client.session_id))
                         sent = True
                     except Exception, ex:
                         logger.error('error sending from: %s, To: %s' % (self.id, self.peer_id))
@@ -185,7 +188,7 @@ class WebRTCHandler(BaseHandler):
             if (client is not self) and (client.peer_id == self.peer_id):  ##notify your other clients of your msg
                 try:
                     client.write_message(message)
-                    logger.debug('sent to other device %s' % client.id)
+                    logger.debug('sent to other device %s. session_id: %s' % (client.id, client.session_id))
                 except Exception, ex:
                     logger.error('error sending to other device: %s, To: %s' % (self.id, self.peer_id))
         if not sent:
@@ -196,6 +199,7 @@ class WebRTCHandler(BaseHandler):
                 if client.peer_id == self.peer_id:       ##only notify on relevant conversation
                     try:
                         client.write_message(message) #just try to notify if you can
+                        logger.debug('sent to %s<%s>' % (client.id, client.session_id))
                     except:
                         pass
         else:
