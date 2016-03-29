@@ -155,7 +155,7 @@ class WebRTCHandler(BaseHandler):
         logger.debug('new connection %s' % self.session_id)
         self.id = self.get_query_argument('id', None)
         self.peer_id = self.get_query_argument('peer_id', None)
-        logger.info('new id: %s, peer: %s' % (self.id, self.peer_id))
+        logger.info('new id: %s, peer: %s, session_id: %s' % (self.id, self.peer_id, self.session_id))
         if self.id and self.id is not self.peer_id:
             if clients.has_key(self.id) is False:
                 clients[self.id] = set()  #removing thread lock since impact is only with present peer
