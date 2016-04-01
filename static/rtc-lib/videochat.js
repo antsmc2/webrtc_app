@@ -153,7 +153,8 @@ function initialize(serverUrl, callbacks) {
 
   connection.onclose = function() {
     trace('signal server link closed');
-    updateChat({text: 'Please check your network connection'});
+    if(callInProgress)
+        updateChat({text: 'Please check your network connection'});
   }
 
   connection.onmessage = function(evt) {
@@ -345,6 +346,7 @@ function onReceiveDataChannelMessage (event) {
             break;
         case "hang-up":
             handleHangUpMsg(msg);
+            break;
     };
   };
 
