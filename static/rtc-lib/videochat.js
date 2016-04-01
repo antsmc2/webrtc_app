@@ -339,8 +339,13 @@ function setUpDataChannel() {
 function onReceiveDataChannelMessage (event) {
     trace("Got Data Channel Message:" + event.data);
     var msg = JSON.parse(event.data);
-    if(msg.type == 'message')
-      updateChat(msg);
+    switch(msg.type) {
+        case "message":
+            updateChat(msg);
+            break;
+        case "hang-up":
+            handleHangUpMsg(msg);
+    };
   };
 
 function receiveDataChannel(event) {
@@ -611,15 +616,21 @@ function handleICEConnectionStateChangeEvent(event) {
 // returned to the "no call in progress" state.
 
 function hangUpCall(event) {
-  var callWasInProgress = callInProgress;
-  closeVideoCall();
-  if(callWasInProgress)
-    updateChat({text: 'Call ended.'});
-  sendToServer({
+  var msg = {
     name: myUsername,
     target: targetUsername,
     type: "hang-up"
-  });
+  };
+  var callWasInProgress = callInProgress;
+  try {
+        dataChannel.send(JSON.stringify(msg));
+      }catch(e) {
+          trace('Error sending msg: ' + e);
+          sendToServer(msg);
+  };
+  closeVideoCall();
+  if(callWasInProgress)
+    updateChat({text: 'Call ended.'});
   return false;
 }
 
