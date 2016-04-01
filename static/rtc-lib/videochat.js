@@ -13,8 +13,12 @@ var mediaConstraints = {
   video: true             // ...and we want a video track
 };
 
+var NOT_STARTED = 1;
+var CALL_IN_PROGRESS = 2;
+var RESTARTING = 3;
+var CLOSING = 4;
 var peerConnected = false;
-var callInProgress = false;
+var callStatus = NOT_STARTED;
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
 var meColor = '#4169E1';
@@ -153,7 +157,7 @@ function initialize(serverUrl, callbacks) {
 
   connection.onclose = function() {
     trace('signal server link closed');
-    if(callInProgress)
+    if(callStatus !== RESTARTING)
         updateChat({text: 'Please check your network connection'});
   }
 
@@ -169,7 +173,7 @@ function initialize(serverUrl, callbacks) {
     if(msg.msg_type == 'SERVER_NOTICE' && msg.message == 'PEER-UNAVAILABLE') {
         return updateChat({text: targetUsername + ' not online'});
     }
-    if(msg.target != myUsername)
+    if(msg.target != myUsername) //you can only call if its your conversation
         return;
     var time = new Date(msg.date);
     var timeStr = time.toLocaleTimeString();
@@ -177,7 +181,7 @@ function initialize(serverUrl, callbacks) {
     switch(msg.type) {
 
       case "username":
-        if(callInProgress == false) //you can only call if its your conversation
+        if(callStatus !== CALL_IN_PROGRESS)
             call(msg.name);
         break;
 
@@ -212,7 +216,7 @@ function initialize(serverUrl, callbacks) {
 
        case "start-call":
           updateChat({text: 'restart call from ' + targetUsername});
-          if(callInProgress == false)
+          if(callStatus !== CALL_IN_PROGRESS)
               start(function(){
                             broadcastPresence(myUsername);
                         });
@@ -462,7 +466,7 @@ function gotRemoteStream(e) {
 
 function handleVideoOfferMsg(msg) {
   hangupButton.disabled = false;
-  callInProgress = true;
+  callStatus = CALL_IN_PROGRESS;
   myPeerConnection.ondatachannel = receiveDataChannel; //register to use callers datachannel
   var desc = new RTCSessionDescription(msg.sdp);
   trace('Accepting call');
@@ -520,7 +524,7 @@ function onCreateAnswerSuccess(desc) {
 }
 
 function handleVideoAnswerMsg(msg) {
-  callInProgress = true;
+  callStatus = CALL_IN_PROGRESS;
   hangupButton.disabled = false;
   var desc = new RTCSessionDescription(msg.sdp);
   trace('myPeerConnection setRemoteDescription start');
@@ -623,7 +627,8 @@ function hangUpCall(event) {
     target: targetUsername,
     type: "hang-up"
   };
-  var callWasInProgress = callInProgress;
+  var callWasInProgress = (callStatus === CALL_IN_PROGRESS);
+  callStatus = CLOSING;
   try {
         dataChannel.send(JSON.stringify(msg));
       }catch(e) {
@@ -639,6 +644,7 @@ function hangUpCall(event) {
 //restart the call
 function restartCall(event) {
   try {
+      callStatus = RESTARTING;
       connection.close();  //close since this is being reinitialized
   }catch(e){};
   initialize(serverUrl,
@@ -701,7 +707,7 @@ function closeVideoCall() {
   }
 
   peerConnected = false;
-  callInProgress = false;
+  callStatus = NOT_STARTED;
   // Disable the hangup button
 
   document.getElementById("restart-call-button").disabled = false;
