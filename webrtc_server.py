@@ -95,6 +95,14 @@ class ICEServerHandler(web.RequestHandler):
             self.add_header('Content-Type', 'application/json')
             self.write(json.dumps(iceServers))
 
+class ClientConnectionsHandler(web.RequestHandler):
+
+    def get(self, *args, **kwargs):
+        id = self.get_query_argument('id', None)
+        my_clients = clients.get(id, [])
+        self.add_header('Content-Type', 'application/json')
+        self.write(json.dumps([{'peer': client.peer_id, 'session': str(client.session_id)} for client in  my_clients]))
+
 
 class BaseTemplateHandler(web.RequestHandler):
     ws_url_name = None
@@ -228,6 +236,7 @@ app = web.Application([
     web.URLSpec(r'/call', CallTemplateHandler, name='caller_page'),
     web.URLSpec(r'/recieve', RecieveTemplateHandler, name='reciever_page'),
     web.URLSpec(ICE_URL, ICEServerHandler, name='ice_url'),
+    web.URLSpec(r'/connections', ClientConnectionsHandler, name='clients_url'),
 ])
 
 if __name__ == '__main__':
