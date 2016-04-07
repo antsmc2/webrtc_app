@@ -151,12 +151,22 @@ function initialize(serverUrl, callbacks) {
     //get ice servers
     if(callbacks.onSignalingOpen)
         callbacks.onSignalingOpen();
-    start(callbacks.onFinishRTCInit);
+    else
+        start();
+    if(callbacks.onFinishRTCInit)
+        callbacks.onFinishRTCInit();
     trace('on signal open sequence complete.');
   };
 
   connection.onclose = function() {
     trace('signal server link closed');
+    if(peerConnected === true) {
+        trace('Seems server ran away while still in contact with Peer.');
+        return setTimeout(function(){ initialize(serverUrl,
+                                    {
+                                        'onSignalingOpen': function(){}
+                                    }); }, 3000);
+    }
     if(callStatus !== RESTARTING)
         updateChat({text: 'Please check your network connection'});
   }
@@ -361,15 +371,15 @@ function receiveDataChannel(event) {
 }
 
 
-function start(onFinishRTCInit) {
+function start(onMediaInit) {
   trace('Requesting local stream');
-  trace('using media callback ' + onFinishRTCInit);
+  trace('using media callback ' + onMediaInit);
   navigator.mediaDevices.getUserMedia(mediaConstraints)
   .then(function(stream) {
       gotStream(stream);
       resetPeer();
-      if(onFinishRTCInit) {
-        onFinishRTCInit();
+      if(onMediaInit) {
+        onMediaInit();
       }
       else {
         broadcastPresence(myUsername);
@@ -607,8 +617,10 @@ function handleICEConnectionStateChangeEvent(event) {
       updateChat({text: targetUsername + ' disconnected.'});
       closeVideoCall();
       break;
+    case "completed":
     case "connected":
       peerConnected = true;
+      trace('Peer has been connected');
     //  myPeerConnection.oniceconnectionstatechange = null; //stop exchanging ice if it is completed.
       break;
   }
@@ -649,14 +661,16 @@ function restartCall(event) {
   }catch(e){};
   initialize(serverUrl,
                     {
-                    'onSignalingOpen' : hangUpCall,
-                     'onFinishRTCInit': function(){
-                                      sendToServer({
-                                        name: myUsername,
-                                        target: targetUsername,
-                                        type: "start-call"
-                                      });
-                                    }
+                    'onSignalingOpen' : function() {
+                                              hangUpCall();
+                                              start(function(){
+                                              sendToServer({
+                                                name: myUsername,
+                                                target: targetUsername,
+                                                type: "start-call"
+                                              });
+                                            });
+                                            }
                     }
              );
   updateChat({text: 'Connecting...'});
