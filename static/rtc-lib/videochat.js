@@ -160,7 +160,7 @@ function initialize(serverUrl, callbacks) {
 
   connection.onclose = function() {
     trace('signal server link closed');
-    if(peerConnected === true) {
+    if(peerConnected === true || callStatus === NOT_STARTED) {
         trace('Seems server ran away while still in contact with Peer.');
         return setTimeout(function(){ initialize(serverUrl,
                                     {
@@ -613,12 +613,12 @@ function handleICEConnectionStateChangeEvent(event) {
   switch(myPeerConnection.iceConnectionState) {
     case "closed":
     case "failed":
-    case "disconnected":
+    //case "disconnected": removing this becos some networks might still recover
       updateChat({text: targetUsername + ' disconnected.'});
       closeVideoCall();
       break;
     case "completed":
-    case "connected":
+    //case "connected":    //stated might be connected but might still get better connection
       peerConnected = true;
       trace('Peer has been connected');
     //  myPeerConnection.oniceconnectionstatechange = null; //stop exchanging ice if it is completed.
