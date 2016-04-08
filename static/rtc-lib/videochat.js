@@ -618,9 +618,9 @@ function handleICEConnectionStateChangeEvent(event) {
       closeVideoCall();
       break;
     case "completed":
-    //case "connected":    //stated might be connected but might still get better connection
+    //case "connected":    //stated might be connected but might still get better connection. Thos is allow new ice
       peerConnected = true;
-      trace('Peer has been connected');
+      trace('Peer has been connection completed');
     //  myPeerConnection.oniceconnectionstatechange = null; //stop exchanging ice if it is completed.
       break;
   }
