@@ -43,7 +43,7 @@ This is the relative URL path which shall be used to retrieve the ice settings f
 This is the token which must be offered from webrtc client before ice settings can be retrieved. To access ice settings, webrtc client must perform post to ICE_URL. Post body must be autorized ICE_ACCESS_TOKEN. 
 
 ####iceServers
-This is list of all ice servers to be used on webrtc client PeerConnection. It must contain list of dictionaries containing ice server credentials.
+This is list of all ice servers to be used on webrtc client PeerConnection (STUN and TURN). It must contain list of dictionaries containing ice server credentials. If you plan use the webrtc across NATs, it is recommended to include at least one functioning TURN server in the ice server settings.
 
 ###Customizing Ice retrieval
 Default behavior when browser requests a page is for the ICE_ACCESS_TOKEN to be supplied to the page for later authentication when retrieving ice server details via POST to ICE_URL.
