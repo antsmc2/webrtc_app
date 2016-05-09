@@ -50,6 +50,12 @@ Default behavior when browser requests a page is for the ICE_ACCESS_TOKEN to be 
 
 To enable more dynamic allocation of ICE_ACCESS_TOKEN, **has_ice_pass** and **get_ice_pass** can be overridden as per needed policy requirement. e.g. change ACCESS_TOKEN periodically, to communicate with other backend systems like database, redis etc. 
 
+**get_ice_pass** function is used to retrieve the ICE_ACCESS_TOKEN to be supplied to webrtc client.
+
+**has_ice_pass** function is used to authenticate the ICE_ACCESS_TOKEN when webrtc client is requesting for ice settings via ICE_URL.
+
+Implementation for bothe can be customized as per specific requirement.
+
 ###Signaling via websocket
 The webrtc_server has a websocket server which can be used for signaling via websocket client. This can be useful in scenarios when both parties want to perform some communication via websocket before actually launching the browsers for webrtc call.
 
