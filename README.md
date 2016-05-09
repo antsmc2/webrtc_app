@@ -37,7 +37,7 @@ Receiver page is accessed on the link:
 ###Server settings
 
 ####ICE_URL
-This is the relative URL path which shall be used to retrieve the ice settings from the webrtc clients. Default value is *r'/ice_servers' *
+This is the relative URL path which shall be used to retrieve the ice settings from the webrtc clients. Default value is **r'/ice_servers'**
 
 ####ICE_ACCESS_TOKEN
 This is the token which must be offered from webrtc client before ice settings can be retrieved. To access ice settings, webrtc client must perform post to ICE_URL. Post body must be autorized ICE_ACCESS_TOKEN. 
@@ -48,7 +48,7 @@ This is list of all ice servers to be used on webrtc client PeerConnection. It m
 ###Customizing Ice retrieval
 Default behavior when browser requests a page is for the ICE_ACCESS_TOKEN to be supplied to the page for later authentication when retrieving ice server details via POST to ICE_URL.
 
-To enable more dynamic allocation of ICE_ACCESS_TOKEN, *has_ice_pass* and *get_ice_pass* can be overridden as per needed policy requirement. e.g. change ACCESS_TOKEN periodically, to communicate with other backend systems like database, redis etc. 
+To enable more dynamic allocation of ICE_ACCESS_TOKEN, **has_ice_pass** and **get_ice_pass** can be overridden as per needed policy requirement. e.g. change ACCESS_TOKEN periodically, to communicate with other backend systems like database, redis etc. 
 
 ###Signaling via websocket
 The webrtc_server has a websocket server which can be used for signaling via websocket client. This can be useful in scenarios when both parties want to perform some communication via websocket before actually launching the browsers for webrtc call.
