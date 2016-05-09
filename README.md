@@ -34,6 +34,8 @@ Receiver page is accessed on the link:
  >http://HOST:PORT/recieve?id={reciever_id}&peer_id={caller_id}
 
 
+The caller_id and reciever_id can be arbitrary values. The only requirement is that they are matching on both sides.
+
 ###Server settings
 
 ####ICE_URL
