@@ -10,7 +10,7 @@ var connection = null;
 
 var mediaConstraints = {
   audio: true,            // We want an audio track
-  video: { frameRate: { min: 10, ideal: 15, max: 30 }, width: {exact: 320}, height: {exact: 240} }             // ...and we want a video track
+  video: { frameRate: { min: 10, ideal: 15, max: 30 }, width: {exact: 160}, height: {exact: 120} }             // ...and we want a video track
 };
 
 var NOT_STARTED = 1;
