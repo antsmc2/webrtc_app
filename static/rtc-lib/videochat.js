@@ -782,7 +782,6 @@ function closeVideoCall() {
   peerConnected = false;
   callStatus = NOT_STARTED;
   // Disable the hangup button
-  bandwidthSelector.disabled = true;
   document.getElementById("restart-call-button").disabled = false;
   document.getElementById("hangup-button").disabled = true;
   disableChat();
