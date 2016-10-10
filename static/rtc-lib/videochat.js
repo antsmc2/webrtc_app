@@ -537,6 +537,7 @@ function handleVideoOfferMsg(msg) {
     trace('Using audio device: ' + audioTracks[0].label);
   }
   trace('recieved offer is ' + desc);
+  desc = getAdjustedBandwidth(desc);
   myPeerConnection.setRemoteDescription(desc)
     .then(function() {
     onSetRemoteSuccess(myPeerConnection);
@@ -580,17 +581,22 @@ function onCreateAnswerSuccess(desc) {
 
 }
 
+function getAdjustedBandwidth(desc){
+  var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
+          .value;
+  if (bandwidth !== 'unlimited') {
+    trace('SC. Applying bandwidth restriction: ' + bandwidth);
+    desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
+  }
+  return desc;
+}
+
 function handleVideoAnswerMsg(msg) {
   callStatus = CALL_IN_PROGRESS;
   hangupButton.disabled = false;
   var desc = new RTCSessionDescription(msg.sdp);
   trace('myPeerConnection setRemoteDescription start');
-  if (bandwidth !== 'unlimited') {
-    var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
-          .value;
-    trace('SC. Applying bandwidth restriction: ' + bandwidth);
-    desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
-  }
+  desc = getAdjustedBandwidth(desc);
   myPeerConnection.setRemoteDescription(desc)
    .then(function() {
     remoteDesc = desc;
