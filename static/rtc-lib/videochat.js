@@ -536,6 +536,11 @@ function handleVideoOfferMsg(msg) {
     trace('Using audio device: ' + audioTracks[0].label);
   }
   trace('recieved offer is ' + desc);
+  var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
+          .value;
+  desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
+  trace('Applying bandwidth restriction to setRemoteDescription:\n' +
+            desc.sdp);
   myPeerConnection.setRemoteDescription(desc)
     .then(function() {
     onSetRemoteSuccess(myPeerConnection);
