@@ -117,6 +117,7 @@ function resetCallControls() {
       myPeerConnection.setLocalDescription(myPeerConnection.localDescription)
       .then(function() {
         var desc = myPeerConnection.remoteDescription;
+        trace('Applying bandwidth restriction: ' + bandwidth);
         if (bandwidth === 'unlimited') {
           desc.sdp = removeBandwidthRestriction(desc.sdp);
         } else {
@@ -587,9 +588,8 @@ function handleVideoAnswerMsg(msg) {
   if (bandwidth !== 'unlimited') {
     var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
           .value;
+    trace('SC. Applying bandwidth restriction: ' + bandwidth);
     desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
-    trace('Applying bandwidth restriction to setRemoteDescription:\n' +
-            desc.sdp);
   }
   myPeerConnection.setRemoteDescription(desc)
    .then(function() {
