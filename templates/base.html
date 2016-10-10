@@ -3,13 +3,28 @@
 <head>
   <title>{{ title }}</title>
   <meta charset="utf-8">
-  <link href="static/rtc-lib/chat.css" rel="stylesheet">
+  <link href="static/rtc-lib/base.css" rel="stylesheet">
   <!--script src="static/rtc-lib/web_socket.js"> </script -->
   <script src="static/rtc-lib/common.js"></script>
-  <script src="static/rtc-lib/adapter.js"></script>
+  <!-- script src="static/rtc-lib/adapter.js"></script -->
+  <script type="text/javascript" src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   <script type="text/javascript" src="static/rtc-lib/videochat.js"></script>
 </head>
 <body>
+  <section id="controls">
+      <div id="buttons">
+          <label>Bandwidth:</label>
+          <select id="bandwidth" disabled>
+            <option value="unlimited">unlimited</option>
+            <option value="2000">2000</option>
+            <option value="1000">1000</option>
+            <option value="500" selected>500</option>
+            <option value="250">250</option>
+            <option value="125">125</option>
+          </select>
+          kbps
+     </div>
+  </section>
   <div id="container" class="flexChild columnParent">
     <div class="flexChild rowParent" id="feedback-container">
       <div class="flexChild" id="camera-container">

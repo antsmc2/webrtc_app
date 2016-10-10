@@ -240,3 +240,8 @@ body, #container {
 #send {
     min-height: 25px;
 }
+
+#controls {
+    color: #aaa;
+    width: 40%;
+}

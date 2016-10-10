@@ -59,6 +59,22 @@ function getName(pc) {
   return (pc === myPeerConnection) ? myUsername : targetUsername;
 }
 
+var bandwidthSelector = null;
+
+function updateBandwidthRestriction(sdp, bandwidth) {
+  if (sdp.indexOf('b=AS:') === -1) {
+    // insert b=AS after c= line.
+    sdp = sdp.replace(/c=IN IP4 (.*)\r\n/,
+                      'c=IN IP4 $1\r\nb=AS:' + bandwidth + '\r\n');
+  } else {
+    sdp = sdp.replace(/b=AS:(.*)\r\n/, 'b=AS:' + bandwidth + '\r\n');
+  }
+  return sdp;
+}
+
+function removeBandwidthRestriction(sdp) {
+  return sdp.replace(/b=AS:(.*)\r\n/, '');
+}
 
 function sendToServer(msg) {
 
@@ -89,6 +105,34 @@ function broadcastPresence(username) {
     });
 }
 
+function resetCallControls() {
+    bandwidthSelector = document.querySelector('select#bandwidth');
+
+    bandwidthSelector.onchange = function() {
+      if(myPeerConnection == null)
+        return;
+      bandwidthSelector.disabled = true;
+      var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
+          .value;
+      myPeerConnection.setLocalDescription(myPeerConnection.localDescription)
+      .then(function() {
+        var desc = myPeerConnection.remoteDescription;
+        if (bandwidth === 'unlimited') {
+          desc.sdp = removeBandwidthRestriction(desc.sdp);
+        } else {
+          desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
+        }
+        trace('Applying bandwidth restriction to setRemoteDescription:\n' +
+            desc.sdp);
+        return myPeerConnection.setRemoteDescription(desc);
+      })
+      .then(function() {
+        bandwidthSelector.disabled = false;
+      })
+      .catch(onSetSessionDescriptionError);
+    };
+}
+
 function connect(path, username, peer_id, ice_url, ice_pass) {
   myUsername = username;
   targetUsername = peer_id;
@@ -104,6 +148,7 @@ function connect(path, username, peer_id, ice_url, ice_pass) {
   serverUrl = scheme + "://" + myHostname + ':' + myPort + path;
 
   console.log('using server url: ' + serverUrl);
+  resetCallControls();
   var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
        if (xhttp.readyState == 4 && xhttp.status == 200) {
@@ -470,6 +515,7 @@ function onSetSessionDescriptionError(error) {
 function gotRemoteStream(e) {
   remoteVideo.srcObject = e.stream;
   remoteVideo.src = window.URL.createObjectURL(e.stream);
+  bandwidthSelector.disabled = false;
   trace('pc2 received remote stream');
 }
 
@@ -723,7 +769,7 @@ function closeVideoCall() {
   peerConnected = false;
   callStatus = NOT_STARTED;
   // Disable the hangup button
-
+  bandwidthSelector.disabled = true;
   document.getElementById("restart-call-button").disabled = false;
   document.getElementById("hangup-button").disabled = true;
   disableChat();
