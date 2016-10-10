@@ -584,11 +584,13 @@ function handleVideoAnswerMsg(msg) {
   hangupButton.disabled = false;
   var desc = new RTCSessionDescription(msg.sdp);
   trace('myPeerConnection setRemoteDescription start');
-  var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
+  if (bandwidth !== 'unlimited') {
+    var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
           .value;
-  desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
-  trace('Applying bandwidth restriction to setRemoteDescription:\n' +
+    desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
+    trace('Applying bandwidth restriction to setRemoteDescription:\n' +
             desc.sdp);
+  }
   myPeerConnection.setRemoteDescription(desc)
    .then(function() {
     remoteDesc = desc;
