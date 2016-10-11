@@ -9,20 +9,34 @@
   <!-- script src="static/rtc-lib/adapter.js"></script -->
   <script type="text/javascript" src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   <script type="text/javascript" src="static/rtc-lib/videochat.js"></script>
+  <style type="text/css">
+      #bitrate {
+        display: none;
+      }
+  </style>
 </head>
 <body>
   <section id="controls">
-      <div id="buttons">
+      <div id="bitrate">
           <label>Bitrate:</label>
           <select id="bandwidth" disabled>
             <option value="unlimited">unlimited</option>
             <option value="2000">2000</option>
             <option value="1000">1000</option>
-            <option value="500" selected>500</option>
+            <option value="500">500</option>
             <option value="50">50</option>
-            <option value="5">5</option>
+            <option value="5" selected="selected">5</option>
           </select>
           kbps
+     </div>
+     <div class="vidResolution">
+          <label>Video Resolution:</label>
+          <select id="vidResolution">
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low" selected="selected">Low</option>
+            <option value="v-low">Very Low</option>
+          </select>
      </div>
   </section>
   <div id="container" class="flexChild columnParent">

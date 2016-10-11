@@ -60,6 +60,7 @@ function getName(pc) {
 }
 
 var bandwidthSelector = null;
+var videoResolutionSelector = null;
 
 function updateBandwidthRestriction(sdp, bandwidth) {
   if (sdp.indexOf('b=AS:') === -1) {
@@ -70,6 +71,27 @@ function updateBandwidthRestriction(sdp, bandwidth) {
     sdp = sdp.replace(/b=AS:(.*)\r\n/, 'b=AS:' + bandwidth + '\r\n');
   }
   return sdp;
+}
+
+function setVideoConstraints() {
+    videoResolutionSelector = document.querySelector('select#vidResolution');
+    var resolution = videoResolutionSelector.options[videoResolutionSelector.selectedIndex].value;
+    if(resolution === 'high') {
+        mediaConstraints.video.width.exact = 1280;
+        mediaConstraints.video.width.exact = 720;
+    }
+    if(resolution === 'medium') {
+        mediaConstraints.video.width.exact = 640;
+        mediaConstraints.video.width.exact = 480;
+    }
+    if(resolution === 'low') {
+        mediaConstraints.video.width.exact = 320;
+        mediaConstraints.video.width.exact = 240;
+    }
+    if(resolution === 'v-low') {
+        mediaConstraints.video.width.exact = 160;
+        mediaConstraints.video.width.exact = 120;
+    }
 }
 
 function removeBandwidthRestriction(sdp) {
@@ -369,6 +391,7 @@ function gotStream(stream) {
   localVideo.src = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
   localStream = stream;
+  videoResolutionSelector.disabled = true;
   trace('done setting stream');
 }
 
@@ -420,6 +443,7 @@ function receiveDataChannel(event) {
 function start(onMediaInit) {
   trace('Requesting local stream');
   trace('using media callback ' + onMediaInit);
+  setVideoConstraints();
   navigator.mediaDevices.getUserMedia(mediaConstraints)
   .then(function(stream) {
       gotStream(stream);
@@ -761,6 +785,7 @@ function closeVideoCall() {
 
     if (localVideo.srcObject) {
       localVideo.srcObject.getTracks().forEach(track => track.stop());
+      videoResolutionSelector.disabled = false;
     }
 
     remoteVideo.src = null;
