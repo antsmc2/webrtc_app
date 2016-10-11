@@ -76,21 +76,25 @@ function updateBandwidthRestriction(sdp, bandwidth) {
 function setVideoConstraints() {
     videoResolutionSelector = document.querySelector('select#vidResolution');
     var resolution = videoResolutionSelector.options[videoResolutionSelector.selectedIndex].value;
+    if(resolution === 'v-high') {
+        mediaConstraints.video = { facingMode: "user", frameRate: { min: 25, ideal: 30, max: 30 }, width: {exact: 1920},
+                                    height: {exact: 1080}};
+    }
     if(resolution === 'high') {
-        mediaConstraints.video.width.exact = 1280;
-        mediaConstraints.video.height.exact = 720;
+        mediaConstraints.video = { facingMode: "user", frameRate: { min: 20, ideal: 30, max: 30 }, width: {exact: 1280},
+                                        height: {exact: 720} };
     }
     if(resolution === 'medium') {
-        mediaConstraints.video.width.exact = 640;
-        mediaConstraints.video.height.exact = 480;
+        mediaConstraints.video = { facingMode: "user", frameRate: { min: 20, ideal: 25, max: 30 }, width: {exact: 640},
+                                        height: {exact: 480} };
     }
     if(resolution === 'low') {
-        mediaConstraints.video.width.exact = 320;
-        mediaConstraints.video.height.exact = 240;
+        mediaConstraints.video = { facingMode: "user", frameRate: { min: 10, ideal: 15, max: 30 }, width: {exact: 320},
+                                        height: {exact: 240} };
     }
     if(resolution === 'v-low') {
-        mediaConstraints.video.width.exact = 160;
-        mediaConstraints.video.height.exact = 120;
+        mediaConstraints.video = { facingMode: "user", frameRate: { min: 10, ideal: 15, max: 30 }, width: {exact: 160},
+                                    height: {exact: 120} };
     }
     trace('using media constraints: ');
     console.dir(mediaConstraints);
