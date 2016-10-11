@@ -78,20 +78,22 @@ function setVideoConstraints() {
     var resolution = videoResolutionSelector.options[videoResolutionSelector.selectedIndex].value;
     if(resolution === 'high') {
         mediaConstraints.video.width.exact = 1280;
-        mediaConstraints.video.width.exact = 720;
+        mediaConstraints.video.height.exact = 720;
     }
     if(resolution === 'medium') {
         mediaConstraints.video.width.exact = 640;
-        mediaConstraints.video.width.exact = 480;
+        mediaConstraints.video.height.exact = 480;
     }
     if(resolution === 'low') {
         mediaConstraints.video.width.exact = 320;
-        mediaConstraints.video.width.exact = 240;
+        mediaConstraints.video.height.exact = 240;
     }
     if(resolution === 'v-low') {
         mediaConstraints.video.width.exact = 160;
-        mediaConstraints.video.width.exact = 120;
+        mediaConstraints.video.height.exact = 120;
     }
+    trace('using media constraints: ');
+    console.dir(mediaConstraints);
 }
 
 function removeBandwidthRestriction(sdp) {
