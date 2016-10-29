@@ -21,9 +21,9 @@ var peerConnected = false;
 var callStatus = NOT_STARTED;
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
-var meColor = '#4169E1';
-var youColor = '#483D8B';
-var systemMessageColor = '#498888';
+var meColor = '#DEDEDD';
+var youColor = '#26AE90';
+var systemMessageColor = '#F8CD71';
 var myPeerConnection = null;    // RTCPeerConnection
 var dataChannel = null;
 var dataChannelID = null;
@@ -34,7 +34,8 @@ var remoteVideo = null;
 var localVideo = null;
 var hangupButton = null;
 var startTime = null;
-
+var muteButton = null;
+var unMuteButton = null;
 
 var localStream;
 var localDesc = null;
@@ -191,6 +192,8 @@ function connect(path, username, peer_id, ice_url, ice_pass) {
     hangupButton = document.getElementById("hangup-button");
     remoteVideo = document.getElementById("received_video");
     localVideo = document.getElementById("local_video");
+unMuteButton = document.getElementById("unMuteAudio");
+unMuteButton.style.display = "none";
     localVideo.addEventListener('loadedmetadata', function() {
       trace('Local video videoWidth: ' + this.videoWidth +
         'px,  videoHeight: ' + this.videoHeight + 'px');
@@ -767,6 +770,30 @@ function restartCall(event) {
 }
 
 
+ 
+function muteOrunmute() {
+muteButton = document.getElementById("hangup-button2");
+unMuteButton = document.getElementById("unMuteAudio");
+    if (localStream.getAudioTracks()[0].enabled == true) {
+        console.log("mute")
+	localStream.getAudioTracks()[0].enabled = false;
+muteButton.style.display = "none";
+unMuteButton.style.display = "inline-block";
+    }
+    else {
+	localStream.getAudioTracks()[0].enabled = true;
+        
+
+    }
+
+}
+function unMuteAudio(){
+unMuteButton = document.getElementById("unMuteAudio");
+localStream.getAudioTracks()[0].enabled = true;
+unMuteButton.style.display = "none";
+muteButton.style.display = "inline-block";
+
+}
 function closeVideoCall() {
 
   trace("Closing the call");

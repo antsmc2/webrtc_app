@@ -1,0 +1,208 @@
+/* Settings Panel */
+
+.cp-settings-pannel {
+  /*  position: fixed;
+    z-index: 9999;
+    top: 4px;
+    right: -300px;
+    overflow: hidden;
+    box-sizing: border-box;
+    width: 300px;
+    padding: 20px;
+    transition: all .3s cubic-bezier(.17, .04, .03, .94);
+    background: #F7F7F7;
+    border-radius: 4px;
+    box-shadow: 0px 0px 0px 1px #E8E8E8;*/
+	   background: #363636 none repeat scroll 0 0;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px #4a4a4a;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 20px;
+    position: fixed;
+    right: -300px;
+    top: 4px;
+    transition: all 0.3s cubic-bezier(0.17, 0.04, 0.03, 0.94) 0s;
+    width: 300px;
+    z-index: 9999;
+}
+
+#cp-settings-toggle:checked ~ .cp-settings-pannel {
+    right: 0;
+}
+
+#cp-settings-toggle {
+    position: absolute;
+    top: -100%;
+    left: -100%;
+    cursor: pointer;
+    appearance: none;
+	
+	
+}
+
+#cp-settings-toggle + label {
+  background: #26ae90 none repeat scroll 0 0;
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 35px;
+    line-height: 20px;
+    padding: 5px;
+    position: fixed;
+    right: 0;
+    text-align: center;
+    top: 16px;
+    transition: all 500ms ease 0s;
+    width: 37px;
+	/*background-image:url(/static/images/slide.png);
+	background-repeat:no-repeat;
+	text-align:center;*/
+}
+
+#cp-settings-toggle:checked + label {
+    right: 300px;
+}
+
+#cp-settings-toggle + label:before {
+/*    font-family: "Ionicons";
+    content: "\f13d";*/
+}
+
+#cp-settings-toggle:checked + label:before {
+/*    font-family: "Ionicons";
+    top: 260px;
+    content: "\f404";*/
+}
+
+
+.cp-settings-pannel p {
+    color: #26AE90;
+    border-bottom: solid 1px;
+    padding-bottom: 5px;
+    margin-top: 12px;
+}
+
+.cp-settings-pannel p:first-child {
+    margin-top: 0;
+}
+
+.cp-settings-picker label {
+    display: inline-block;
+    width: 52px;
+    height: 52px;
+    margin-right: 2px;
+    border: solid 3px #ddd;
+    cursor: pointer;
+}
+
+.cred {
+    background: #FF4343;
+}
+
+.cyellow {
+    background: #FFC543;
+}
+
+.cblue {
+    background: #4397FF;
+}
+
+.cpink {
+    background: #FF4994;
+}
+
+.cp-settings-picker input[type="radio"] {
+    position: absolute;
+    left: -100%;
+    top: -100%;
+}
+
+.cp-settings-picker input[type="radio"]:checked + label {
+    border-color: #666
+}
+
+.cp-settings-select select {
+    width: 100%;
+    padding: 5px;
+    border: solid 2px #CCC;
+    color: #7B7B7B;
+}
+
+.cp-settings-select select:focus {
+    outline: none;
+}
+
+.cp-settings-select select option {
+    padding: 5px;
+}
+
+.cp-settings-switch-block {
+    position: relative;
+}
+
+.cp-settings-switch-block span {
+    color: #999;
+    font-size: 12px;
+    width: 95px;
+    display: inline-block;
+    position: relative;
+    top: -18px;
+}
+
+.cp-settings-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+.cp-settings-switch input {display:none;}
+
+.cp-settings-switch-slider {
+    position: absolute !important;
+    cursor: pointer;
+    top: 0 !important;
+    display: block !important;
+    left: 0;
+    right: 0;
+    width: auto !important;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+.cp-settings-switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.cp-settings-switch input:checked + .cp-settings-switch-slider {
+  background-color: #26ae90;
+}
+
+.cp-settings-switch input:focus + .cp-settings-switch-slider {
+  box-shadow: 0 0 1px #26ae90;
+}
+
+.cp-settings-switch input:checked + .cp-settings-switch-slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+.cp-settings-switch-slider {
+  border-radius: 34px;
+}
+
+.cp-settings-switch-slider:before {
+  border-radius: 50%;
+}
