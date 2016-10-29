@@ -21,9 +21,9 @@ var peerConnected = false;
 var callStatus = NOT_STARTED;
 var myUsername = null;
 var targetUsername = null;      // To store username of other peer
-var meColor = '#4169E1';
-var youColor = '#483D8B';
-var systemMessageColor = '#498888';
+var meColor = '#DEDEDD';
+var youColor = '#26AE90';
+var systemMessageColor = '#F8CD71';
 var myPeerConnection = null;    // RTCPeerConnection
 var dataChannel = null;
 var dataChannelID = null;
@@ -34,7 +34,8 @@ var remoteVideo = null;
 var localVideo = null;
 var hangupButton = null;
 var startTime = null;
-
+var muteButton = null;
+var unMuteButton = null;
 
 var localStream;
 var localDesc = null;
@@ -60,7 +61,6 @@ function getName(pc) {
 }
 
 var bandwidthSelector = null;
-var bandwidth = 'unlimited';
 var videoResolutionSelector = null;
 
 function findLine(sdpLines, prefix, substr) {
@@ -121,6 +121,7 @@ function setDefaultCodec(mLine, payload) {
   return newLine.join(" ");
 }
 
+
 function updateBandwidthRestriction(sdp, bandwidth) {
   if (sdp.indexOf('b=AS:') === -1) {
     // insert b=AS after c= line.
@@ -138,17 +139,14 @@ function setVideoConstraints() {
     if(resolution === 'v-high') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 25, ideal: 30, max: 30 }, width: {exact: 1920},
                                     height: {exact: 1080}};
-        bandwidthSelector.value = 'unlimited';
     }
     if(resolution === 'high') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 20, ideal: 30, max: 30 }, width: {exact: 1280},
                                         height: {exact: 720} };
-        bandwidthSelector.value = 'unlimited';
     }
     if(resolution === 'medium') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 20, ideal: 25, max: 30 }, width: {exact: 640},
                                         height: {exact: 480} };
-        bandwidthSelector.value = 500;
     }
     if(resolution === 'low') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 10, ideal: 15, max: 30 }, width: {exact: 320},
@@ -202,7 +200,8 @@ function resetCallControls() {
       if(myPeerConnection == null)
         return;
       bandwidthSelector.disabled = true;
-      var bandwidth = bandwidthSelector.value;
+      var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
+          .value;
       myPeerConnection.setLocalDescription(myPeerConnection.localDescription)
       .then(function() {
         var desc = myPeerConnection.remoteDescription;
@@ -252,6 +251,8 @@ function connect(path, username, peer_id, ice_url, ice_pass) {
     hangupButton = document.getElementById("hangup-button");
     remoteVideo = document.getElementById("received_video");
     localVideo = document.getElementById("local_video");
+unMuteButton = document.getElementById("unMuteAudio");
+unMuteButton.style.display = "none";
     localVideo.addEventListener('loadedmetadata', function() {
       trace('Local video videoWidth: ' + this.videoWidth +
         'px,  videoHeight: ' + this.videoHeight + 'px');
@@ -673,13 +674,12 @@ function onCreateAnswerSuccess(desc) {
 }
 
 function getAdjustedBandwidth(desc){
-  var bandwidth = bandwidthSelector.value;
+  var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
+          .value;
   if (bandwidth !== 'unlimited') {
     trace('SC. Applying bandwidth restriction: ' + bandwidth);
     desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
   }
-  else
-    desc.sdp = removeBandwidthRestriction(desc.sdp);
   return desc;
 }
 
@@ -829,6 +829,30 @@ function restartCall(event) {
 }
 
 
+
+function muteOrunmute() {
+muteButton = document.getElementById("hangup-button2");
+unMuteButton = document.getElementById("unMuteAudio");
+    if (localStream.getAudioTracks()[0].enabled == true) {
+        console.log("mute")
+	localStream.getAudioTracks()[0].enabled = false;
+muteButton.style.display = "none";
+unMuteButton.style.display = "inline-block";
+    }
+    else {
+	localStream.getAudioTracks()[0].enabled = true;
+
+
+    }
+
+}
+function unMuteAudio(){
+unMuteButton = document.getElementById("unMuteAudio");
+localStream.getAudioTracks()[0].enabled = true;
+unMuteButton.style.display = "none";
+muteButton.style.display = "inline-block";
+
+}
 function closeVideoCall() {
 
   trace("Closing the call");
