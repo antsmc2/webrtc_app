@@ -60,7 +60,66 @@ function getName(pc) {
 }
 
 var bandwidthSelector = null;
+var bandwidth = 'unlimited';
 var videoResolutionSelector = null;
+
+function findLine(sdpLines, prefix, substr) {
+  return findLineInRange(sdpLines, 0, -1, prefix, substr);
+}
+function findLineInRange(sdpLines, startLine, endLine, prefix, substr) {
+  var realEndLine = endLine !== -1 ? endLine : sdpLines.length;
+  for (var i = startLine;i < realEndLine;++i) {
+    if (sdpLines[i].indexOf(prefix) === 0) {
+      if (!substr || sdpLines[i].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
+        return i;
+      }
+    }
+  }
+  return null;
+}
+
+function maybePreferCodec(sdp, type, dir, codec) {
+  var str = type + " " + dir + " codec";
+  if (!codec) {
+    trace("No preference on " + str + ".");
+    return sdp;
+  }
+  trace("Prefer " + str + ": " + codec);
+  var sdpLines = sdp.split("\r\n");
+  var mLineIndex = findLine(sdpLines, "m=", type);
+  if (mLineIndex === null) {
+    return sdp;
+  }
+  var payload = getCodecPayloadType(sdpLines, codec);
+  if (payload) {
+    sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], payload);
+  }
+  sdp = sdpLines.join("\r\n");
+  return sdp;
+}
+
+function getCodecPayloadType(sdpLines, codec) {
+  var index = findLine(sdpLines, "a=rtpmap", codec);
+  return index ? getCodecPayloadTypeFromLine(sdpLines[index]) : null;
+}
+
+function getCodecPayloadTypeFromLine(sdpLine) {
+  var pattern = new RegExp("a=rtpmap:(\\d+) [a-zA-Z0-9-]+\\/\\d+");
+  var result = sdpLine.match(pattern);
+  return result && result.length === 2 ? result[1] : null;
+}
+
+function setDefaultCodec(mLine, payload) {
+  var elements = mLine.split(" ");
+  var newLine = elements.slice(0, 3);
+  newLine.push(payload);
+  for (var i = 3;i < elements.length;i++) {
+    if (elements[i] !== payload) {
+      newLine.push(elements[i]);
+    }
+  }
+  return newLine.join(" ");
+}
 
 function updateBandwidthRestriction(sdp, bandwidth) {
   if (sdp.indexOf('b=AS:') === -1) {
@@ -79,14 +138,17 @@ function setVideoConstraints() {
     if(resolution === 'v-high') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 25, ideal: 30, max: 30 }, width: {exact: 1920},
                                     height: {exact: 1080}};
+        bandwidthSelector.value = 'unlimited';
     }
     if(resolution === 'high') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 20, ideal: 30, max: 30 }, width: {exact: 1280},
                                         height: {exact: 720} };
+        bandwidthSelector.value = 'unlimited';
     }
     if(resolution === 'medium') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 20, ideal: 25, max: 30 }, width: {exact: 640},
                                         height: {exact: 480} };
+        bandwidthSelector.value = 500;
     }
     if(resolution === 'low') {
         mediaConstraints.video = { facingMode: "user", frameRate: { min: 10, ideal: 15, max: 30 }, width: {exact: 320},
@@ -140,8 +202,7 @@ function resetCallControls() {
       if(myPeerConnection == null)
         return;
       bandwidthSelector.disabled = true;
-      var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
-          .value;
+      var bandwidth = bandwidthSelector.value;
       myPeerConnection.setLocalDescription(myPeerConnection.localDescription)
       .then(function() {
         var desc = myPeerConnection.remoteDescription;
@@ -612,12 +673,13 @@ function onCreateAnswerSuccess(desc) {
 }
 
 function getAdjustedBandwidth(desc){
-  var bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex]
-          .value;
+  var bandwidth = bandwidthSelector.value;
   if (bandwidth !== 'unlimited') {
     trace('SC. Applying bandwidth restriction: ' + bandwidth);
     desc.sdp = updateBandwidthRestriction(desc.sdp, bandwidth);
   }
+  else
+    desc.sdp = removeBandwidthRestriction(desc.sdp);
   return desc;
 }
 
