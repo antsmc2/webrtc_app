@@ -63,6 +63,7 @@ function getName(pc) {
 var bandwidthSelector = null;
 var videoResolutionSelector = null;
 
+
 function findLine(sdpLines, prefix, substr) {
   return findLineInRange(sdpLines, 0, -1, prefix, substr);
 }
@@ -78,7 +79,7 @@ function findLineInRange(sdpLines, startLine, endLine, prefix, substr) {
   return null;
 }
 
-function maybePreferCodec(sdp, type, dir, codec) {
+function setPreferredCodec(sdp, type, dir, codec) {
   var str = type + " " + dir + " codec";
   if (!codec) {
     trace("No preference on " + str + ".");
@@ -91,11 +92,19 @@ function maybePreferCodec(sdp, type, dir, codec) {
     return sdp;
   }
   var payload = getCodecPayloadType(sdpLines, codec);
+  trace('found codec payload: ' + payload);
+  trace('codec order: '+ sdpLines[mLineIndex]);
   if (payload) {
     sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], payload);
   }
+  trace('updated codec order: '+ sdpLines[mLineIndex]);
   sdp = sdpLines.join("\r\n");
   return sdp;
+}
+
+function setPreferredVideoSendCodec(sdp) {
+  var codecSelector = document.querySelector('select#codec');
+  return setPreferredCodec(sdp, "video", "send", codecSelector.options[codecSelector.selectedIndex].value);
 }
 
 function getCodecPayloadType(sdpLines, codec) {
@@ -459,6 +468,7 @@ function gotStream(stream) {
   localVideo.src = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
   localStream = stream;
+  document.querySelector('select#codec').disabled = true;
   videoResolutionSelector.disabled = true;
   trace('done setting stream');
 }
@@ -574,6 +584,7 @@ function onCreateSessionDescriptionError(error) {
 
 
 function onCreateOfferSuccess(desc) {
+  desc.sdp = setPreferredVideoSendCodec(desc.sdp);
   localDesc = desc;
   trace('Offer from myPeerConnection\n' + desc.sdp);
   trace('pc1 setLocalDescription start');
@@ -649,6 +660,7 @@ function handleVideoOfferMsg(msg) {
 }
 
 function onCreateAnswerSuccess(desc) {
+  desc.sdp = setPreferredVideoSendCodec(desc.sdp);
   localDesc = desc;
   trace('Answer from myPeerConnection:\n' + desc.sdp);
   trace('myPeerConnection setLocalDescription start');
@@ -878,6 +890,7 @@ function closeVideoCall() {
     if (localVideo.srcObject) {
       localVideo.srcObject.getTracks().forEach(track => track.stop());
       videoResolutionSelector.disabled = false;
+      document.querySelector('select#codec').disabled = false;
     }
 
     remoteVideo.src = null;
